@@ -9,3 +9,32 @@
 # (transcoding), templating and a way to reuse arguments that are frequently repeated. See more here:
 # https://kedro.readthedocs.io/en/stable/data/data_catalog.html
 #
+
+# OLIDA (https://olida.ibsquare.be/api/swagger/) data
+olida_combinations:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/olida/Combination.tsv
+  load_args:
+    sep: '\t'
+  save_args:
+    index: False
+
+olida_genes:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/olida/Gene.tsv
+  load_args:
+    sep: '\t'
+  save_args:
+    index: False
+
+# Study conduucted by Jolanda van Leeuwen ()
+jvl:
+  type: pandas.ExcelDataSet
+  filepath: data/01_raw/jvl/media-2.xlsx
+  load_args:
+    sheet_name: 'Data'
+
+# Gene Ontology (https://geneontology.org/docs/download-ontology/) data
+go:
+  type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
+  filepath: http://purl.obolibrary.org/obo/go/go-basic.obo

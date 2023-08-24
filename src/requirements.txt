@@ -1,3 +1,4 @@
+# Base requirements
 black~=22.0
 flake8>=3.7.9, <4.0
 ipython>=7.31.1, <8.0; python_version < '3.8'
@@ -12,3 +13,20 @@ nbstripout~=0.4
 pytest-cov~=3.0
 pytest-mock>=1.7.1, <2.0
 pytest~=7.2
+
+# Other requirements
+openpyxl~=3.1.2
+
+# Data Science
+numpy~=1.24.4
+pandas~=2.0.3
+ray[air]~=2.6.3
+
+# Distributed Computing & Scaling
+pyarrow~=6.0.1
+dask[complete]~=2023.5.0
+
+# Graph & Ontology Related
+pronto~=2.5.5
+nxontology~=0.5.0
+networkx~=3.1
