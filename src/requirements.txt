@@ -16,10 +16,14 @@ pytest~=7.2
 
 # Other requirements
 openpyxl~=3.1.2
+kedro-viz~=6.4.0
+loguru~=0.7.0
+tqdm~=4.66.1
 
 # Data Science
 numpy~=1.24.4
 pandas~=2.0.3
+xarray~=2023.1.0
 ray[air]~=2.6.3
 
 # Distributed Computing & Scaling

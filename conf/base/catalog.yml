@@ -38,3 +38,16 @@ jvl:
 go:
   type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
   filepath: http://purl.obolibrary.org/obo/go/go-basic.obo
+
+goa:
+  type: pandas.CSVDataSet
+  filepath: http://geneontology.org/gene-associations/goa_human.gaf.gz
+  load_args:
+    compression: gzip
+    sep: '\t'
+    names: ['DB', 'DB_Object_ID', 'DB_Object_Symbol', 'Qualifier', 'GO_ID', 'DB:Reference', 'Evidence_Code', 'With_From', 'Aspect', 'DB_Object_Name', 'DB_Object_Synonym', 'DB_Object_Type', 'Taxon', 'Date', 'Assigned_By', 'Annotation_Extension', 'Gene_Product_Form_ID']
+    usecols: ['DB_Object_ID', 'GO_ID', 'Evidence_Code', 'Aspect', 'DB_Object_Name', 'DB_Object_Synonym', 'DB_Object_Type', 'Taxon', 'Date', 'Assigned_By', 'Annotation_Extension', 'Gene_Product_Form_ID']
+    dtype: {'DB_Object_ID': str, 'GO_ID': str, 'Evidence_Code': str, 'Aspect': str, 'DB_Object_Name': str, 'DB_Object_Synonym': str, 'DB_Object_Type': str, 'Taxon': str, 'Date': str, 'Assigned_By': str, 'Annotation_Extension': str, 'Gene_Product_Form_ID': str}
+    na_values: ['']
+    #skiprows: 23
+    comment: '!'
