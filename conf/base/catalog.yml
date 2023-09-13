@@ -34,6 +34,35 @@ jvl:
   load_args:
     sheet_name: 'Data'
 
+# Annotated JVL data
+jvl_annotated:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/jvl/annotated.csv
+  load_args:
+    sep: ','
+  save_args:
+    index: False
+
+# Scored JVL data
+jvl_scored:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/jvl/scored.csv
+  load_args:
+    sep: ','
+  save_args:
+    index: False
+
+# MTG Lab data
+zyg1_scored:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/mtg/scored.csv
+  load_args:
+    sep: ','
+  save_args:
+    index: False
+
+
+
 # Gene Ontology (https://geneontology.org/docs/download-ontology/) data
 go:
   type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
@@ -51,3 +80,4 @@ goa:
     na_values: ['']
     #skiprows: 23
     comment: '!'
+
