@@ -81,3 +81,31 @@ goa:
     #skiprows: 23
     comment: '!'
 
+
+# STRING-DB (https://string-db.org/cgi/download.pl) data
+string_interactions:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/stringdb/9606.protein.links.full.v12.0.txt
+  load_args:
+    sep: ' '
+    names: ['protein1', 'protein2', 'neighborhood', 'neighborhood_transferred', 
+    'fusion', 'cooccurence', 'homology', 'coexpression', 'coexpression_transferred', 
+    'experiments', 'experiments_transferred', 'database', 'database_transferred', 
+    'textmining', 'textmining_transferred', 'combined_score']
+    usecols: ['protein1', 'protein2', 'neighborhood', 'neighborhood_transferred', 
+    'fusion', 'cooccurence', 'homology', 'coexpression', 'coexpression_transferred', 
+    'experiments', 'experiments_transferred', 'database', 'database_transferred', 
+    'textmining', 'textmining_transferred', 'combined_score']
+    na_values: ['']
+    skiprows: 1
+
+string_alias:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/stringdb/9606.protein.aliases.v12.0.txt.gz
+  load_args:
+    compression: gzip
+    sep: '\t'
+    names: ['protein', 'alias', 'source']
+    usecols: ['protein', 'alias', 'source']
+    na_values: ['']
+    skiprows: 1
