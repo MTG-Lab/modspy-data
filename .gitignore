@@ -9,7 +9,7 @@ conf/local/**
 conf/**/*credentials*
 
 # ignore everything in the following folders
-data/**
+# data/**
 
 # except their sub-folders
 !data/**/
@@ -146,3 +146,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 .telemetry
+/data
