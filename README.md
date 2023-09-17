@@ -15,6 +15,10 @@ In order to get the best out of the template:
 * Don't commit data to your repository
 * Don't commit any credentials or your local configuration to your repository. Keep all your credentials and local configuration in `conf/local/`
 
+## Help with Compute Canada Clusters
+1. Activate following modules: `module load gcc python/3.8.10 arrow/11 spark/3.3.0` before actiavating your environment.
+
+
 ## Before you start
 Create a virtual environment with python 3.8.10 version.
 
