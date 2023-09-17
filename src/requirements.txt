@@ -7,7 +7,7 @@ isort~=5.0
 jupyter~=1.0
 jupyterlab~=3.0
 kedro~=0.18.12
-kedro-datasets[spark.SparkDataSet]~=1.0
+# kedro-datasets[spark.SparkDataSet]~=1.0
 kedro-telemetry~=0.2.0
 nbstripout~=0.4
 pytest-cov~=3.0
@@ -16,19 +16,19 @@ pytest~=7.2
 
 # Other requirements
 openpyxl~=3.1.2
-kedro-viz~=6.4.0
+# kedro-viz
 loguru~=0.7.0
 tqdm~=4.66.1
 
 # Data Science
-numpy~=1.24.4
-pandas~=2.0.3
+numpy
+pandas
 xarray~=2023.1.0
-ray[air]~=2.6.3
+# ray[air]
 
 # Distributed Computing & Scaling
-pyarrow~=13.0.0
-dask[complete]~=2023.5.0
+pyarrow~=11.0.0
+dask[complete]
 
 # Graph & Ontology Related
 pronto~=2.5.5
