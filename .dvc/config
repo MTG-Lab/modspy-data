@@ -1,0 +1,7 @@
+[core]
+    remote = graham
+    autostage = true
+['remote "graham"']
+    url = ssh://rahit@graham.computecanada.ca/home/rahit/projects/def-mtarailo/rahit/DVC_REPOSITORY
+    ask_password = true
+    ask_passphrase = true
