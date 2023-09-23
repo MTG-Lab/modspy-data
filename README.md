@@ -16,8 +16,22 @@ In order to get the best out of the template:
 * Don't commit any credentials or your local configuration to your repository. Keep all your credentials and local configuration in `conf/local/`
 
 ## Help with Compute Canada Clusters
-1. Activate following modules: `module load gcc python/3.8.10 arrow/11 spark/3.3.0` before actiavating your environment.
+1. Remove deafult modules: `module --force purge`
+2. Activate StdEnv/2020 module which is a pre-requisite for gcc: `module load StdEnv/2020`
+3. Activate following modules: `module load gcc/9.3.0 python/3.8.10 cuda/11.7 arrow/9.0.0` before actiavating your environment. A `module list` should look like this:
+```
+Currently Loaded Modules:
+  1) CCconfig                 5) mii/1.1.2            9) python/3.8.10    (t)    13) gdrcopy/2.3
+  2) gentoo/2020     (S)      6) gcccore/.9.3.0 (H)  10) cudacore/.11.7.0 (H,t)  14) ucx/1.8.0
+  3) imkl/2020.1.217 (math)   7) gcc/9.3.0      (t)  11) cuda/11.7        (t)    15) libfabric/1.15.1
+  4) StdEnv/2020     (S)      8) libffi/3.3          12) arrow/9.0.0      (t)    16) openmpi/4.0.3    (m)
+```
+4. Activate your environment: `source activate <env_name>`
 
+
+Next, if you want to run the jupyter notebook you can do so by requesting an interactive allocation. Here running using `kedro jupyter lab` to allow contextualization of the project and configuration - 
+~~`salloc --time=02:28:80 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=8G --account=def-mtarailo kedro jupyter lab --ip $(hostname -f) --no-browser`~~
+`salloc --time=1:0:0 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=4G --account=def-mtarailo srun $VIRTUAL_ENV/bin/jupyterlab.sh`
 
 ## Before you start
 Create a virtual environment with python 3.8.10 version.
