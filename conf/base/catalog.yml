@@ -45,8 +45,17 @@ jvl_annotated:
 
 # Scored JVL data
 jvl_scored:
-  type: pandas.CSVDataSet
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
   filepath: data/02_intermediate/jvl/scored.csv
+  # load_args:
+  #   sep: ','
+  save_args:
+    index: False
+
+# JVL data with all features
+jvl_features:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/jvl/features.csv
   load_args:
     sep: ','
   save_args:
@@ -84,7 +93,7 @@ goa:
 
 # STRING-DB (https://string-db.org/cgi/download.pl) data
 string_interactions:
-  type: pandas.CSVDataSet
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
   filepath: data/01_raw/stringdb/9606.protein.links.full.v12.0.txt
   load_args:
     sep: ' '
@@ -100,7 +109,7 @@ string_interactions:
     skiprows: 1
 
 string_alias:
-  type: pandas.CSVDataSet
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
   filepath: data/01_raw/stringdb/9606.protein.aliases.v12.0.txt.gz
   load_args:
     compression: gzip
