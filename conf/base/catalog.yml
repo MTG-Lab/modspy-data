@@ -62,11 +62,45 @@ jvl_features:
     index: False
 
 # MTG Lab data
+zyg1_raw:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/mtg/combined_dataset_2022-11-15-07-04.tsv
+  load_args:
+    sep: '\t'
+  save_args:
+    index: False
+
+zyg1_truemods:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/mtg/confirmed_modifiers.tsv
+  load_args:
+    sep: '\t'
+  save_args:
+    index: False
+
 zyg1_scored:
   type: pandas.CSVDataSet
   filepath: data/02_intermediate/mtg/scored.csv
   load_args:
     sep: ','
+  save_args:
+    index: False
+
+zyg1_features:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/mtg/features.csv
+  load_args:
+    sep: ','
+  save_args:
+    index: False
+
+
+# Combined Dataset
+modifiers:
+  type: pandas.CSVDataSet
+  filepath: data/04_feature/modifier_merged_dataset.csv
+  load_args:
+    sep: '\t'
   save_args:
     index: False
 
