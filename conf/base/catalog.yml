@@ -69,6 +69,7 @@ zyg1_raw:
     sep: '\t'
   save_args:
     index: False
+    sep: '\t'
 
 zyg1_truemods:
   type: pandas.CSVDataSet
@@ -77,6 +78,7 @@ zyg1_truemods:
     sep: '\t'
   save_args:
     index: False
+    sep: '\t'
 
 zyg1_scored:
   type: pandas.CSVDataSet
@@ -85,6 +87,7 @@ zyg1_scored:
     sep: ','
   save_args:
     index: False
+    sep: '\t'
 
 zyg1_features:
   type: pandas.CSVDataSet
@@ -93,14 +96,15 @@ zyg1_features:
     sep: ','
   save_args:
     index: False
+    sep: '\t'
 
 
 # Combined Dataset
 modifiers:
   type: pandas.CSVDataSet
-  filepath: data/04_feature/modifier_merged_dataset.csv
+  filepath: data/04_feature/modifier_merged_dataset.tsv
   load_args:
-    sep: '\t'
+    sep: ','
   save_args:
     index: False
 
@@ -152,3 +156,21 @@ string_alias:
     usecols: ['protein', 'alias', 'source']
     na_values: ['']
     skiprows: 1
+
+
+
+xs:
+  type: MemoryDataSet
+  data: [5, 4,7,8,9,9,0,5,8,8,66,5,4,6]
+n:
+  type: MemoryDataSet
+  data: 200
+m:
+  type: MemoryDataSet
+  data: 5
+m2:
+  type: MemoryDataSet
+  data: 5
+v:
+  type: MemoryDataSet
+  data: 3

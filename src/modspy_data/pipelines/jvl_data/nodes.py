@@ -6,6 +6,7 @@ generated using Kedro 0.18.12
 import pandas as pd
 from modspy_data.helpers import KnowledgeGraphScores
 from kedro.io import *
+from kedro.pipeline import node, pipeline
 
 # Remove wraping quotation sign ("") from dataframe
 def remove_quotes(df):
@@ -52,5 +53,14 @@ def add_annotations(df):
     io.save('jvl_scored', jvl_s)
 
 
-def create_pipeline(**kwargs):
-    
+def mean(xs, n):
+    return sum(xs) / n
+
+
+def mean_sos(xs, n):
+    return sum(x**2 for x in xs) / n
+
+
+def variance(m, m2):
+    return m2 - m * m
+

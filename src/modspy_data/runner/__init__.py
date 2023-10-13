@@ -1,3 +1,4 @@
-from .dask_runner import DaskRunner
+from .dask_runner import DaskRunner, SLURMRunner
 
-__all__ = ["DaskRunner"]
+__all__ = ["DaskRunner", 
+           "SLURMRunner"]

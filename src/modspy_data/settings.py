@@ -22,8 +22,8 @@ from modspy_data.hooks import SparkHooks
 # CONF_SOURCE = "conf"
 
 # Class that manages how configuration is loaded.
-# from kedro.config import OmegaConfigLoader
-# CONFIG_LOADER_CLASS = OmegaConfigLoader
+from kedro.config import OmegaConfigLoader
+CONFIG_LOADER_CLASS = OmegaConfigLoader
 # Keyword arguments to pass to the `CONFIG_LOADER_CLASS` constructor.
 # CONFIG_LOADER_ARGS = {
 #       "config_patterns": {
@@ -31,6 +31,11 @@ from modspy_data.hooks import SparkHooks
 #           "parameters": ["parameters*", "parameters*/**", "**/parameters*"],
 #       }
 # }
+CONFIG_LOADER_ARGS = {
+    "config_patterns": {
+        "dask": ["dask*/"],
+    }
+}
 
 # Class that manages Kedro's library components.
 # from kedro.framework.context import KedroContext
