@@ -113,11 +113,11 @@ modifiers:
 # Gene Ontology (https://geneontology.org/docs/download-ontology/) data
 go:
   type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
-  filepath: http://purl.obolibrary.org/obo/go/go-basic.obo
+  filepath: data/01_raw/go/go-basic.obo
 
 goa:
   type: pandas.CSVDataSet
-  filepath: http://geneontology.org/gene-associations/goa_human.gaf.gz
+  filepath: data/01_raw/go/goa_human.gaf.gz
   load_args:
     compression: gzip
     sep: '\t'

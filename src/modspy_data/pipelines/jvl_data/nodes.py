@@ -7,6 +7,7 @@ import pandas as pd
 from modspy_data.helpers import KnowledgeGraphScores
 from kedro.io import *
 from kedro.pipeline import node, pipeline
+import dask.dataframe as dd
 
 # Remove wraping quotation sign ("") from dataframe
 def remove_quotes(df):
@@ -25,23 +26,28 @@ def match_on_annotation(row, goa, col_name=['QueryGene']):
     return row
 
 
-def clean_jvl(df):
-    io = DataCatalog()
-    goa = io.load("goa")
-    jvl = io.load('jvl')
-    jvl_pairs = jvl[['QueryGene', 'SuppressorGene']]
+def clean_jvl(df, goa):
+    # io = DataCatalog()
+    # goa = io.load("goa")
+    # jvl = io.load('jvl')
+    # jvl_pairs = df[['QueryGene', 'SuppressorGene']]
+    ddf = dd.from_pandas(df[['QueryGene','SuppressorGene']], npartitions=9)
+    ddf.drop_duplicates(subset=['QueryGene','SuppressorGene'])
     _goa = goa.dropna(subset=['DB_Object_Synonym'])
-    __jvl = jvl.apply(match_on_annotation, axis=1, goa=_goa, col_name=['QueryGene', 'SuppressorGene'])
+    __jvl = ddf.apply(match_on_annotation, axis=1, goa=_goa, col_name=['QueryGene', 'SuppressorGene'], meta={    
+        'QueryGene': 'object', 'SuppressorGene': 'object', 'QueryGene_GO': 'object', 'SuppressorGene_GO': 'object'})
+    __jvl = __jvl.compute()
     __jvl = __jvl[['QueryGene', 'SuppressorGene', 'QueryGene_GO', 'SuppressorGene_GO']]
-    io.save('jvl_annotated', __jvl)
+    # io.save('jvl_annotated', __jvl)
     # __jvl.to_csv('jvl_go.csv', index=False)
+    return __jvl
 
 
-def add_annotations(df):
-    io = DataCatalog()
-    go = io.load('go')
-    jvl = io.load('jvl_annotated')
-    kg_scores = KnowledgeGraphScores({'go': (go, jvl)}, col_names=('QueryGene', 'SuppressorGene', 'QueryGene_GO', 'SuppressorGene_GO'))
+def add_annotations(df, go):
+    # io = DataCatalog()
+    # go = io.load('go')
+    # jvl = io.load('jvl_annotated')
+    kg_scores = KnowledgeGraphScores({'go': (go, df)}, col_names=('QueryGene', 'SuppressorGene', 'QueryGene_GO', 'SuppressorGene_GO'))
     cols = kg_scores.score_names
     cols_dtype = {
         'QueryGene': 'object',
@@ -49,8 +55,9 @@ def add_annotations(df):
     }
     for c in cols:
         cols_dtype[c] = 'float32'
-    jvl_s = jvl.apply(kg_scores.get_scores, axis=1) 
-    io.save('jvl_scored', jvl_s)
+    df_scored = df.apply(kg_scores.get_scores, axis=1) 
+    # io.save('jvl_scored', jvl_s)
+    return df_scored
 
 
 def mean(xs, n):

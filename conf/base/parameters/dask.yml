@@ -1,9 +1,10 @@
 # Dask SLURM cluster confirguration parameters
 dask:
+  n_workers: 1
   slurm:
-    cores: 2
-    memory: 1GB
+    cores: 8
+    memory: 4GB
     processes: 1
-    walltime: 00:20:15
+    walltime: 00:30:00
     account: "def-mtarailo_cpu"
     log_directory: './logs'

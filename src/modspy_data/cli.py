@@ -50,9 +50,10 @@ def _instantiate_runner(runner, is_async, project_context):
 
     if runner.endswith("SLURMRunner"):
         dask_params = project_context.params.get("dask") or {}
+        n_workers = dask_params.get('n_workers', None)
         slurm_args = dask_params.get('slurm', {})
         client_args = dask_params.get('client', {})
-        runner_kwargs.update(slurm_args=slurm_args, client_args=client_args)
+        runner_kwargs.update(n_workers=n_workers, slurm_args=slurm_args, client_args=client_args)
 
     return runner_class(**runner_kwargs)
 

@@ -44,6 +44,9 @@ class KnowledgeGraphScores:
             measures = self.nxo_info
         
         # Creating xarray to store similarity
+        logger.debug(a.shape)
+        logger.debug(a)
+        logger.debug(b.shape)
         sim_arr = xr.DataArray(
             np.zeros((len(a), len(b), 9)), 
             dims=('target', 'candidate', 'score'), 

@@ -53,183 +53,21 @@ class _DaskDataSet(AbstractDataSet):
         return dict(name=self._name)
 
 
-class DaskRunner(AbstractRunner):
-    """``DaskRunner`` is an ``AbstractRunner`` implementation. It can be
-    used to distribute execution of ``Node``s in the ``Pipeline`` across
-    a Dask cluster, taking into account the inter-``Node`` dependencies.
-    """
-
-    def __init__(self, client_args: Dict[str, Any] = {}, is_async: bool = False):
-        """Instantiates the runner by creating a ``distributed.Client``.
-
-        Args:
-            client_args: Arguments to pass to the ``distributed.Client``
-                constructor.
-            is_async: If True, the node inputs and outputs are loaded and saved
-                asynchronously with threads. Defaults to False.
-        """
-        super().__init__(is_async=is_async)
-        self._logger.info(f"Client configuration:{client_args}")
-        # l(client_args)
-        # Client(**client_args)
-
-    def __del__(self):
-        Client.current().close()
-
-    def create_default_data_set(self, ds_name: str) -> _DaskDataSet:
-        """Factory method for creating the default dataset for the runner.
-
-        Args:
-            ds_name: Name of the missing dataset.
-
-        Returns:
-            An instance of ``_DaskDataSet`` to be used for all
-            unregistered datasets.
-        """
-        return _DaskDataSet(ds_name)
-
-    @staticmethod
-    def _run_node(
-        node: Node,
-        catalog: DataCatalog,
-        is_async: bool = False,
-        session_id: str = None,
-        *dependencies: Node,
-    ) -> Node:
-        """Run a single `Node` with inputs from and outputs to the `catalog`.
-
-        Wraps ``run_node`` to accept the set of ``Node``s that this node
-        depends on. When ``dependencies`` are futures, Dask ensures that
-        the upstream node futures are completed before running ``node``.
-
-        A ``PluginManager`` instance is created on each worker because the
-        ``PluginManager`` can't be serialised.
-
-        Args:
-            node: The ``Node`` to run.
-            catalog: A ``DataCatalog`` containing the node's inputs and outputs.
-            is_async: If True, the node inputs and outputs are loaded and saved
-                asynchronously with threads. Defaults to False.
-            session_id: The session id of the pipeline run.
-            dependencies: The upstream ``Node``s to allow Dask to handle
-                dependency tracking. Their values are not actually used.
-
-        Returns:
-            The node argument.
-        """
-        hook_manager = _create_hook_manager()
-        _register_hooks(hook_manager, settings.HOOKS)
-        _register_hooks_setuptools(hook_manager, settings.DISABLE_HOOKS_FOR_PLUGINS)
-        
-        return run_node(node, catalog, hook_manager, is_async, session_id)
-
-    def _run(
-        self,
-        pipeline: Pipeline,
-        catalog: DataCatalog,
-        hook_manager: PluginManager,
-        session_id: str = None,
-    ) -> None:
-        nodes = pipeline.nodes
-        load_counts = Counter(chain.from_iterable(n.inputs for n in nodes))
-        node_dependencies = pipeline.node_dependencies
-        node_futures = {}
-
-        client = Client.current()
-        for node in nodes:
-            dependencies = (
-                node_futures[dependency] for dependency in node_dependencies[node]
-            )
-            node_futures[node] = client.submit(
-                DaskRunner._run_node,
-                node,
-                catalog,
-                self._is_async,
-                session_id,
-                *dependencies,
-            )
-
-        for i, (_, node) in enumerate(
-            as_completed(node_futures.values(), with_results=True)
-        ):
-            self._logger.info("Completed node: %s", node.name)
-            self._logger.info("Completed %d out of %d tasks", i + 1, len(nodes))
-
-            # Decrement load counts, and release any datasets we
-            # have finished with. This is particularly important
-            # for the shared, default datasets we created above.
-            for data_set in node.inputs:
-                load_counts[data_set] -= 1
-                if load_counts[data_set] < 1 and data_set not in pipeline.inputs():
-                    catalog.release(data_set)
-            for data_set in node.outputs:
-                if load_counts[data_set] < 1 and data_set not in pipeline.outputs():
-                    catalog.release(data_set)
-
-    def run_only_missing(
-        self, pipeline: Pipeline, catalog: DataCatalog
-    ) -> Dict[str, Any]:
-        """Run only the missing outputs from the ``Pipeline`` using the
-        datasets provided by ``catalog``, and save results back to the
-        same objects.
-
-        Args:
-            pipeline: The ``Pipeline`` to run.
-            catalog: The ``DataCatalog`` from which to fetch data.
-        Raises:
-            ValueError: Raised when ``Pipeline`` inputs cannot be
-                satisfied.
-
-        Returns:
-            Any node outputs that cannot be processed by the
-            ``DataCatalog``. These are returned in a dictionary, where
-            the keys are defined by the node outputs.
-        """
-        free_outputs = pipeline.outputs() - set(catalog.list())
-        missing = {ds for ds in catalog.list() if not catalog.exists(ds)}
-        to_build = free_outputs | missing
-        to_rerun = pipeline.only_nodes_with_outputs(*to_build) + pipeline.from_inputs(
-            *to_build
-        )
-
-        # We also need any missing datasets that are required to run the
-        # `to_rerun` pipeline, including any chains of missing datasets.
-        unregistered_ds = pipeline.data_sets() - set(catalog.list())
-        # Some of the unregistered datasets could have been published to
-        # the scheduler in a previous run, so we need not recreate them.
-        missing_unregistered_ds = {
-            ds_name
-            for ds_name in unregistered_ds
-            if not self.create_default_data_set(ds_name).exists()
-        }
-        output_to_unregistered = pipeline.only_nodes_with_outputs(
-            *missing_unregistered_ds
-        )
-        input_from_unregistered = to_rerun.inputs() & missing_unregistered_ds
-        to_rerun += output_to_unregistered.to_outputs(*input_from_unregistered)
-
-        # We need to add any previously-published, unregistered datasets
-        # to the catalog passed to the `run` method, so that it does not
-        # think that the `to_rerun` pipeline's inputs are not satisfied.
-        catalog = catalog.shallow_copy()
-        for ds_name in unregistered_ds - missing_unregistered_ds:
-            catalog.add(ds_name, self.create_default_data_set(ds_name))
-
-        return self.run(to_rerun, catalog)
-    
 
 class SLURMRunner(AbstractRunner):
-    """``DaskRunner`` is an ``AbstractRunner`` implementation. It can be
+    """``SLURMRunner`` is an ``AbstractRunner`` implementation. It can be
     used to distribute execution of ``Node``s in the ``Pipeline`` across
-    a Dask cluster, taking into account the inter-``Node`` dependencies.
+    a SLURM cluster using Dask API, taking into account the inter-``Node`` dependencies.
     It uses SLURM jobque instiation to run Dask jobs.
     """
 
-    def __init__(self, slurm_args: Dict[str, Any] = {}, 
+    def __init__(self, n_workers: int, slurm_args: Dict[str, Any] = {}, 
                  client_args: Dict[str, Any] = {}, is_async: bool = False):
         """Instantiates the runner by creating a ``distributed.Client``.
 
         Args:
+            n_workers: Number of workers to initiate
+            slurm_args: Parameters to pass to the ``dask_jobqueue.SLURMCluster``
             client_args: Arguments to pass to the ``distributed.Client``
                 constructor.
             is_async: If True, the node inputs and outputs are loaded and saved
@@ -237,9 +75,12 @@ class SLURMRunner(AbstractRunner):
         """
         super().__init__(is_async=is_async)
         self.cluster = SLURMCluster(**slurm_args)
+        self.n_workers = n_workers
         self._logger.info(self.cluster)
         self.client = Client(self.cluster)
         self._logger.info(self.client)
+
+        self.cluster.scale(self.n_workers)
 
         
     def __del__(self):
@@ -316,7 +157,8 @@ class SLURMRunner(AbstractRunner):
 
         load_counts = Counter(chain.from_iterable(n.inputs for n in nodes))
 
-        self.cluster.scale(4)
+        # TODO: Variable/adaptive scaling
+        # self.cluster.scale(4)
         for exec_index, node in enumerate(nodes):
             try:
                 run_node(node, catalog, hook_manager, self._is_async, session_id)
