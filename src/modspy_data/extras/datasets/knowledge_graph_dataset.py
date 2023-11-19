@@ -40,7 +40,10 @@ class KGDataSet(AbstractDataSet[pronto.Ontology, nx.DiGraph]):
         load_path = get_filepath_str(self._filepath, self._protocol)
         with self._fs.open(load_path) as f:                
             po = pronto.Ontology(handle=load_path)
-            mg = pronto_to_multidigraph(po, default_rel_type="is a")
+            mg = pronto_to_multidigraph(po, default_rel_type="is a")    # TODO consider adding other type of relationships
+            # For future (may be) create seperate multi graphs for different relationships
+            # DiGraph can not hold more than one edge.
+            # anoter idea is to use edge attribute to indicate different relationships. 
             dg = multidigraph_to_digraph(mg, reduce=True)
             digraph_nxo = nxo.NXOntology(dg)
             digraph_nxo.freeze()    

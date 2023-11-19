@@ -108,6 +108,13 @@ modifiers:
   save_args:
     index: False
 
+annotated:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/v3/annotated.tsv
+  load_args:
+    sep: ','
+  save_args:
+    index: False
 
 
 # Gene Ontology (https://geneontology.org/docs/download-ontology/) data

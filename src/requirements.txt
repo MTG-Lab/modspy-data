@@ -15,10 +15,13 @@ pytest-mock>=1.7.1, <2.0
 pytest~=7.2
 
 # Other requirements
+omegaconf==6.0
 openpyxl~=3.1.2
 # kedro-viz
 loguru~=0.7.0
 tqdm~=4.66.1
+argparse
+texttable
 
 # Data Science
 numpy
