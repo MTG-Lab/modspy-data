@@ -5,6 +5,6 @@ dask:
     cores: 8
     memory: 4GB
     processes: 1
-    walltime: 00:30:00
+    walltime: 00:00:10
     account: "def-mtarailo_cpu"
     log_directory: './logs'

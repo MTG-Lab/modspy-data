@@ -5,7 +5,7 @@ generated using Kedro 0.18.12
 
 from kedro.pipeline import Pipeline, node, pipeline
 
-from .nodes import add_annotations, clean_jvl, mean, mean_sos, variance
+from .nodes import add_annotations, clean_jvl, mean, mean_sos, variance, annotate_olida
 
 def create_pipeline(**kwargs) -> Pipeline:
     return pipeline(
@@ -16,7 +16,8 @@ def create_pipeline(**kwargs) -> Pipeline:
         #     node(variance, ["m", "m2"], "v", name="variance_node"),
         # ],
         [
-            node(clean_jvl, ['jvl', 'goa'], 'jvl_annotated', name='clean_jvl'),
-            node(add_annotations, ['jvl_annotated', 'go'], 'jvl_scored', name='add_annotations'),
+            node(annotate_olida, ['olida_pairs', 'goa'], 'olida_annotated', name='annotate_olida'),
+            # node(clean_jvl, ['jvl', 'goa'], 'jvl_annotated', name='clean_jvl'),
+            # node(add_annotations, ['jvl_annotated', 'go'], 'jvl_scored', name='add_annotations'),
         ]
     )

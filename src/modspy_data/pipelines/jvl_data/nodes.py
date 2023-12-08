@@ -43,6 +43,28 @@ def clean_jvl(df, goa):
     return __jvl
 
 
+def annotate_olida(df, goa, use_dask=False):
+    # keeping `Oligogenic Effect` so that we can identify type of relationship
+    if use_dask:
+        _df = dd.from_pandas(df[['gene_a','gene_b','Oligogenic Effect']], npartitions=1)
+    _df = df.drop_duplicates(subset=['gene_a','gene_b','Oligogenic Effect'])
+    
+    _goa = goa.dropna(subset=['DB_Object_Synonym'])
+    _goa['gene_symbol'] = _goa['DB_Object_Synonym'].str.split('|') # Alternative gene symbols are | seperated
+    goa_genes = _goa.explode('gene_symbol')
+
+    _df = _df.merge(goa_genes, how='left', left_on='gene_a', right_on='gene_symbol')
+    _df = _df.groupby(['gene_a','gene_b', 'Oligogenic Effect']).agg({'GO_ID': list})
+    _df.rename(columns={'GO_ID':'gene_a_GO'})
+
+    _df = _df.merge(goa_genes, how='left', left_on='gene_b', right_on='gene_symbol')
+    _df = _df.groupby(['gene_a','gene_b', 'Oligogenic Effect']).agg({'GO_ID': list})
+    _df.rename(columns={'GO_ID':'gene_b_GO'})
+
+    return _df.compute()
+
+
+
 def add_annotations(df, go):
     # io = DataCatalog()
     # go = io.load('go')
