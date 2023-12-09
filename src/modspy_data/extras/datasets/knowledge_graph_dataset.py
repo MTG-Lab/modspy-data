@@ -30,6 +30,33 @@ class KGDataSet(AbstractDataSet[pronto.Ontology, nx.DiGraph]):
         self._filepath = PurePosixPath(path)
         self._fs = fsspec.filesystem(self._protocol)
 
+
+    def parse_obo_file_custom(self, file_path, rel_type: str = "is_a") -> nx.DiGraph:
+        """
+        Parses an OBO file and returns a networkx graph.
+        Each node in the graph is a term in the ontology, and edges represent relationships between terms.
+        """
+        graph = nx.DiGraph()
+        current_term = None
+
+        with open(file_path, 'r') as file:
+            for line in file:
+                line = line.strip()
+                if line == "[Term]" or line == "":
+                    current_term = None
+                elif line.startswith("id: "):
+                    current_term = line.split("id: ")[1]
+                    graph.add_node(current_term)
+                elif line.startswith("name: "):
+                    name = line.split("name: ")[1]
+                    graph.nodes[current_term]['name'] = name
+                elif line.startswith(rel_type+": "):
+                    parent_term = line.split(rel_type+": ")[1].split(' ! ')[0]
+                    graph.add_edge(current_term, parent_term)
+                # TODO Additional relationships could be added here as needed
+        return graph
+
+
     def _load(self) -> nx.DiGraph:
         """Loads data from the image file.
 
@@ -38,16 +65,21 @@ class KGDataSet(AbstractDataSet[pronto.Ontology, nx.DiGraph]):
         """
         # using get_filepath_str ensures that the protocol and path are appended correctly for different filesystems
         load_path = get_filepath_str(self._filepath, self._protocol)
-        with self._fs.open(load_path) as f:                
-            po = pronto.Ontology(handle=load_path)
-            mg = pronto_to_multidigraph(po, default_rel_type="is a")    # TODO consider adding other type of relationships
-            # For future (may be) create seperate multi graphs for different relationships
-            # DiGraph can not hold more than one edge.
-            # anoter idea is to use edge attribute to indicate different relationships. 
-            dg = multidigraph_to_digraph(mg, reduce=True)
-            digraph_nxo = nxo.NXOntology(dg)
-            digraph_nxo.freeze()    
-            return digraph_nxo
+        try: 
+            with self._fs.open(load_path) as f:                
+                po = pronto.Ontology(handle=load_path)
+                mg = pronto_to_multidigraph(po, default_rel_type="is a")    # TODO consider adding other type of relationships
+                # For future (may be) create seperate multi graphs for different relationships
+                # DiGraph can not hold more than one edge.
+                # anoter idea is to use edge attribute to indicate different relationships. 
+                dg = multidigraph_to_digraph(mg, reduce=True)
+                digraph_nxo = nxo.NXOntology(dg)
+                digraph_nxo.freeze()    
+                return digraph_nxo
+        except Exception as e:
+            # logging.info(repr(e))            
+            return self.parse_obo_file_custom(load_path)
+
         
     def _describe(self) -> None:
         pass

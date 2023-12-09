@@ -70,8 +70,14 @@ jvl:
     sheet_name: 'Data'
 
 
+##################################################################
+########### DB, Ontologies, and other data sources ###############
+##################################################################
+
+
 # NCBI (https://www.ncbi.nlm.nih.gov/) data
 ############################################
+
 # Gene info from https://ftp.ncbi.nih.gov/gene/DATA/gene_info.gz on 7 Dec 2023
 ncbi_gene_info:
   type: pandas.CSVDataSet
@@ -99,6 +105,9 @@ ncbi_gene_neighbors:
     index: False
 
 
+# Ontologies
+############################################
+
 # Gene Ontology (https://geneontology.org/docs/download-ontology/) data
 go:
   type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
@@ -109,19 +118,66 @@ goa:
   filepath: data/01_raw/go/goa_human.gaf.gz
 
 
+# Wormbase Gene Ontology and GAF files collected on 7 Dec 2023
 wb_go:
   type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
   filepath: data/01_raw/wormbase/gene_ontology.WS290.obo
+
 wb_goa:
   type: modspy_data.extras.datasets.gaf.GAFDataFile
   filepath: data/01_raw/wormbase/gene_association.WS290.wb
 
+  # load_args:
+  #   sep: '\t'
+  #   comment: '!'
+  # save_args:
+  #   index: False
+
+
+# Human Phenotype Ontology (https://hpo.jax.org/app/download/ontology) data on 7 Dec 2023
+# phenotype.hpoa file does not contains gene associations.
+# We will use their genes_to_phenotype.txt file instead.
+hpo:
+  type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
+  filepath: data/01_raw/po/hp-full.obo
+
+hpoa:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/po/genes_to_phenotype.txt
+  load_args:
+    sep: '\t'
+  save_args:
+    index: False
+
+
+
+# Wormbase Phenotype Ontology and annotation GAF files collected on 7 Dec 2023
 wb_po:
   type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
-  filepath: data/01_raw/wormbase/phenotype_association.WS290.wb
+  filepath: data/01_raw/wormbase/phenotype_ontology.WS290.obo
+
 wb_poa:
   type: modspy_data.extras.datasets.gaf.GAFDataFile
   filepath: data/01_raw/wormbase/phenotype_association.WS290.wb
+
+
+# Disease Ontology from https://github.com/DiseaseOntology/HumanDiseaseOntology/ on 7 Dec 2023
+# We used  doid-merged.obo : includes the inferred branches, includes ontology imported. This was
+# created for Alliange Genome Resources (AGR) and is the most up-to-date version of the ontology.
+do:
+  type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
+  filepath: data/01_raw/do/doid-merged.obo
+
+# DO annotation was downloaded from AGR on 7 Dec 2023
+doa:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/do/DISEASE-ALLIANCE_COMBINED.tsv.gz
+  load_args:
+    compression: gzip
+    sep: '\t'
+    comment: '#'
+  save_args:
+    index: False
 
 
 

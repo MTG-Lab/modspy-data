@@ -23,12 +23,20 @@ class GAFDataFile(AbstractDataSet[pd.DataFrame, pd.DataFrame]):
         self._protocol = protocol
         self._filepath = PurePosixPath(path)
         self._fs = fsspec.filesystem(self._protocol)
+        # For files with GAF 2.2 version
         self.columns = [
                 'DB', 'DB_Object_ID', 'DB_Object_Symbol', 'Qualifier', 'GO_ID',
                 'DB_Reference', 'Evidence_Code', 'With_Or_From', 'Aspect',
                 'DB_Object_Name', 'DB_Object_Synonym', 'DB_Object_Type', 'Taxon',
                 'Date', 'Assigned_By', 'Annotation_Extension'
             ]
+        # For files with GAF 2.0 version.
+        self.columns_depricated = [
+                'DB', 'DB_Object_ID', 'DB_Object_Symbol', 'Qualifier', 'GO_ID',
+                'DB_Reference', 'Evidence_Code', 'With_Or_From', 'Aspect',
+                'DB_Object_Name', 'DB_Object_Synonym', 'DB_Object_Type', 'Taxon',
+                'Date', 'Assigned_By'
+        ]
 
 
     def _load(self) -> pd.DataFrame:
@@ -39,22 +47,38 @@ class GAFDataFile(AbstractDataSet[pd.DataFrame, pd.DataFrame]):
         """
         # using get_filepath_str ensures that the protocol and path are appended correctly for different filesystems
         load_path = get_filepath_str(self._filepath, self._protocol)
-
+        older_gaf = False
+        
+        lines = []
         # Try to open the file with gzip.open
         try:
             # Unzipping and reading the GAF file
             with gzip.open(load_path, 'rt') as file:
-                # Skipping initial comment lines that start with '!'
-                lines = [line for line in file if not line.startswith('!')]
+                for line in file:
+                    # Skipping initial comment lines that start with '!'
+                    if not line.startswith('!'):
+                        lines.append(line)
+                    elif line.startswith('!gaf-version: 2.0'):
+                        older_gaf = True
+                # lines = [line for line in file if not line.startswith('!')]
         except OSError:
             # If gzip.open raises an OSError, the file is not gzipped
             with open(load_path, 'rt') as file:
-                lines = [line for line in file if not line.startswith('!')]
+                for line in file:
+                    if not line.startswith('!'):
+                        lines.append(line)
+                    elif line.startswith('!gaf-version: 2.0'):
+                        older_gaf = True
+                # lines = [line for line in file if not line.startswith('!')]
 
         # Convert lines to DataFrame
         df = pd.DataFrame([line.strip().split('\t') for line in lines])
+        
         # Renaming columns of the GO annotation DataFrame
-        df.columns = self.columns
+        if older_gaf:
+            df.columns = self.columns_depricated
+        else:
+            df.columns = self.columns
 
         return df
         
