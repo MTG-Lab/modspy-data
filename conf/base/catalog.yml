@@ -180,6 +180,15 @@ doa:
     index: False
 
 
+# OGEE (https://v3.ogee.info/) data downloaded on 7 Dec 2023
+gene_essentiality:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/ogee/gene_essentiality.txt.gz
+  load_args:
+    sep: '\t'
+  save_args:
+    index: False
+
 
 # STRING-DB (https://string-db.org/cgi/download.pl) data
 string_interactions:
