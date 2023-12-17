@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --account=def-mtarailo_cpu
 #SBATCH --cpus-per-task=1        # number of cores per MPI process
-#SBATCH --mem-per-cpu=8GB      # memory; default unit is megabytes
-#SBATCH --time=00-00:35           # time (DD-HH:MM)
+#SBATCH --mem-per-cpu=16GB      # memory; default unit is megabytes
+#SBATCH --time=00-5:35           # time (DD-HH:MM)
 #SBATCH -J dask-king
 #SBATCH -e ./logs/dask-king-%J.err
 #SBATCH -o ./logs/dask-king-%J.out

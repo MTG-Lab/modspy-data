@@ -8,6 +8,7 @@ from modspy_data.helpers import KnowledgeGraphScores
 from kedro.io import *
 from kedro.pipeline import node, pipeline
 import dask.dataframe as dd
+import logging
 
 # Remove wraping quotation sign ("") from dataframe
 def remove_quotes(df):
@@ -65,11 +66,12 @@ def annotate_olida(df, goa, use_dask=False):
 
 
 
-def add_annotations(df, go):
+def add_annotations(df, kg):
     # io = DataCatalog()
     # go = io.load('go')
     # jvl = io.load('jvl_annotated')
-    kg_scores = KnowledgeGraphScores({'go': (go, df)}, col_names=('QueryGene', 'SuppressorGene', 'QueryGene_GO', 'SuppressorGene_GO'))
+    kg_scores = KnowledgeGraphScores({'go': (kg, df)}, 
+                                     col_names=('QueryGene', 'SuppressorGene', 'QueryGene_GO', 'SuppressorGene_GO'))
     cols = kg_scores.score_names
     cols_dtype = {
         'QueryGene': 'object',
@@ -80,6 +82,41 @@ def add_annotations(df, go):
     df_scored = df.apply(kg_scores.get_scores, axis=1) 
     # io.save('jvl_scored', jvl_s)
     return df_scored
+
+
+
+def compute_similarity(df, kg, col_names=('gene_a', 'gene_b', 'target_GOs', 'modifier_GOs'), dask_params=None):
+    # logger = logging.getLogger(__name__)
+    
+    # Deriving the name programattically. 
+    # # Not reliable. Change to parameterized if time allows
+    # Get the third element of the tuple, split it on '_', and get the second part
+    kg_name = col_names[2].split('_')[1][:2]
+
+    kg_scores = KnowledgeGraphScores({kg_name: (kg, [])}, 
+                                     col_names=col_names)
+    cols = kg_scores.score_names
+    cols_dtype = {
+        col_names[0]: 'object',
+        col_names[1]: 'object'
+    }
+    for c in cols:
+        cols_dtype[c] = 'float32'    
+    dask_npartition = 2
+    
+    # logger.info(dask_params)
+    if dask_params != None and 'n_workers' in dask_params:
+        dask_npartition = int(dask_params['n_workers'])
+        if 'slurm' in dask_params and 'cores' in dask_params['slurm']:
+            dask_npartition = dask_npartition * int(dask_params['slurm']['cores'])
+    else:
+        if df.shape[0] > 1000:
+            dask_npartition = 8
+        elif df.shape[0] > 100:
+            dask_npartition = 4
+    ddf = dd.from_pandas(df, npartitions=dask_npartition)
+    __df = ddf.apply(kg_scores.get_scores, axis=1, meta=cols_dtype) 
+    return __df.compute()
 
 
 def mean(xs, n):
