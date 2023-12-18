@@ -125,11 +125,103 @@ monarch_nodes:
   filepath: data/01_raw/monarch/monarch-kg_nodes.tsv
   load_args:
     sep: "\t"
+    dtype:
+      id: str
+      category: str
+      name: str
+      xref: str
+      provided_by: str
+      synonym: str
+      full_name: str
+      in_taxon: str
+      in_taxon_label: str
+      symbol: str
+      description: str
+      deprecated: str
+      iri: str
+      same_as: str
+
 monarch_edges:
   type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
   filepath: data/01_raw/monarch/monarch-kg_edges.tsv
   load_args:
     sep: "\t"
+    dtype:
+      id: str
+      original_subject: str
+      predicate: str
+      original_object: str
+      category: str
+      aggregator_knowledge_source: str
+      primary_knowledge_source: str
+      provided_by: str
+      publications: str
+      qualifiers: str
+      frequency_qualifier: str
+      has_evidence: str
+      negated: str
+      onset_qualifier: str
+      sex_qualifier: str
+      stage_qualifier: str
+      relation: str
+      subject: str
+      object: str
+      
+monarch_pyg:
+  type: modspy_data.extras.datasets.torch.TorchFile
+  filepath: data/02_intermediate/monarch/pyg_hetero_data.pt
+
+# sample
+monarch_nodes_sample:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/02_intermediate/monarch/sample_nodes.tsv
+  load_args:
+    sep: "\t"
+    dtype:
+      id: str
+      category: str
+      name: str
+      xref: str
+      provided_by: str
+      synonym: str
+      full_name: str
+      in_taxon: str
+      in_taxon_label: str
+      symbol: str
+      description: str
+      deprecated: str
+      iri: str
+      same_as: str
+
+monarch_edges_sample:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/02_intermediate/monarch/sample_edges.tsv
+  load_args:
+    sep: "\t"
+    dtype:
+      id: str
+      original_subject: str
+      predicate: str
+      original_object: str
+      category: str
+      aggregator_knowledge_source: str
+      primary_knowledge_source: str
+      provided_by: str
+      publications: str
+      qualifiers: str
+      frequency_qualifier: str
+      has_evidence: str
+      negated: str
+      onset_qualifier: str
+      sex_qualifier: str
+      stage_qualifier: str
+      relation: str
+      subject: str
+      object: str
+
+monarch_pyg_sample:
+  type: modspy_data.extras.datasets.torch.TorchFile
+  filepath: data/02_intermediate/monarch/pyg_sample.pt
 
 
 

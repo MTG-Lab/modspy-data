@@ -9,6 +9,9 @@ from kedro.io import *
 from kedro.pipeline import node, pipeline
 import dask.dataframe as dd
 import logging
+import torch
+from torch_geometric.data import HeteroData
+from collections import defaultdict
 
 # Remove wraping quotation sign ("") from dataframe
 def remove_quotes(df):
@@ -117,6 +120,64 @@ def compute_similarity(df, kg, col_names=('gene_a', 'gene_b', 'target_GOs', 'mod
     ddf = dd.from_pandas(df, npartitions=dask_npartition)
     __df = ddf.apply(kg_scores.get_scores, axis=1, meta=cols_dtype) 
     return __df.compute()
+
+# Define a function to apply to each row of the `edges` DataFrame
+def process_row(row, id_to_category, node_mapping):
+    subject_type = id_to_category[row['subject']]
+    object_type = id_to_category[row['object']]
+    edge_key = (subject_type, row['predicate'], object_type)
+    return edge_key, (node_mapping[row['subject']], node_mapping[row['object']])
+
+def kgx_to_pyg(nodes, edges):
+    logger = logging.getLogger(__name__)    
+        
+    nodes = nodes.reset_index(drop=True)
+    # Prepare node mapping and node types
+    node_mapping = {node_id: i for i, node_id in enumerate(nodes['id'].unique().compute())}
+    node_types = nodes['category'].unique().compute()
+
+    # Initialize HeteroData for the heterogeneous graph
+    data = HeteroData()
+
+    logger.info(f"🔵⚫🔘 Processing Nodes")
+    # Add nodes to the graph
+    for node_type in node_types:
+        # mask = nodes['category'].compute() == node_type
+        type_nodes = nodes[nodes['category'] == node_type].compute()
+        data[node_type].x = torch.tensor(type_nodes.index.to_list(), dtype=torch.long)
+
+    logger.info(f"Node processing done 🔵⚫🔘 ")
+
+    # Assuming `nodes` is a Dask DataFrame with 'id' and 'category' columns
+    # and `node_mapping` is a dictionary mapping node ids to some values
+
+    # Create a dictionary mapping node ids to categories
+    id_to_category = nodes.set_index('id')['category'].compute().to_dict()
+
+    logger.info(f"➡️ Creating edges")
+    # Apply the function to each row of the `edges` DataFrame
+    edges['result'] = edges.apply(lambda row: process_row(row, id_to_category, node_mapping), axis=1, meta=('object'))
+
+    # Compute the result
+    result = edges['result'].compute()
+
+    # Create the `edge_type_mappings` dictionary
+    edge_type_mappings = {}
+    for edge_key, value in result:
+        if edge_key not in edge_type_mappings:
+            edge_type_mappings[edge_key] = []
+        edge_type_mappings[edge_key].append(value)
+
+    logger.info(f"➡️ Result done, will now do mapping")
+
+    # Add edges to the graph
+    for edge_key, edge_indices in edge_type_mappings.items():
+        edge_index = torch.tensor(edge_indices, dtype=torch.long).t().contiguous()
+        data[edge_key].edge_index = edge_index
+
+    logger.info(f"➡️ Edge done")
+
+    return data
 
 
 def mean(xs, n):
