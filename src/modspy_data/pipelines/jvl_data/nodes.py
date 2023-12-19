@@ -128,7 +128,16 @@ def process_row(row, id_to_category, node_mapping):
     edge_key = (subject_type, row['predicate'], object_type)
     return edge_key, (node_mapping[row['subject']], node_mapping[row['object']])
 
-def kgx_to_pyg(nodes, edges):
+def kgx_to_pyg(nodes: dd.DataFrame, edges: dd.DataFrame) -> HeteroData:
+    """Generate PyTorch Geometric HeteroData type graph from nodes and edges.
+
+    Args:
+        nodes (dd.DataFrame): _description_
+        edges (dd.DataFrame): _description_
+
+    Returns:
+        HeteroData: _description_
+    """
     logger = logging.getLogger(__name__)    
         
     nodes = nodes.reset_index(drop=True)
