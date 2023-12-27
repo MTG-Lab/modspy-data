@@ -2,13 +2,16 @@
 used to distribute execution of ``Node``s in the ``Pipeline`` across
 a Dask cluster, taking into account the inter-``Node`` dependencies.
 """
+import logging
 from collections import Counter
 from itertools import chain
 from typing import Any, Dict
 
+from dask_jobqueue import SLURMCluster
 from distributed import Client, as_completed, worker_client
 from kedro.framework.hooks.manager import (
     _create_hook_manager,
+    _NullPluginManager,
     _register_hooks,
     _register_hooks_setuptools,
 )
@@ -50,26 +53,39 @@ class _DaskDataSet(AbstractDataSet):
         return dict(name=self._name)
 
 
-class DaskRunner(AbstractRunner):
-    """``DaskRunner`` is an ``AbstractRunner`` implementation. It can be
+
+class SLURMRunner(AbstractRunner):
+    """``SLURMRunner`` is an ``AbstractRunner`` implementation. It can be
     used to distribute execution of ``Node``s in the ``Pipeline`` across
-    a Dask cluster, taking into account the inter-``Node`` dependencies.
+    a SLURM cluster using Dask API, taking into account the inter-``Node`` dependencies.
+    It uses SLURM jobque instiation to run Dask jobs.
     """
 
-    def __init__(self, client_args: Dict[str, Any] = {}, is_async: bool = False):
+    def __init__(self, n_workers: int, slurm_args: Dict[str, Any] = {}, 
+                 client_args: Dict[str, Any] = {}, is_async: bool = False):
         """Instantiates the runner by creating a ``distributed.Client``.
 
         Args:
+            n_workers: Number of workers to initiate
+            slurm_args: Parameters to pass to the ``dask_jobqueue.SLURMCluster``
             client_args: Arguments to pass to the ``distributed.Client``
                 constructor.
             is_async: If True, the node inputs and outputs are loaded and saved
                 asynchronously with threads. Defaults to False.
         """
         super().__init__(is_async=is_async)
-        Client(**client_args)
+        self.cluster = SLURMCluster(**slurm_args)
+        self.n_workers = n_workers
+        self._logger.info(self.cluster)
+        self.client = Client(self.cluster)
+        self._logger.info(self.client)
 
+        self.cluster.scale(self.n_workers)
+
+        
     def __del__(self):
-        Client.current().close()
+        self.client.close()  # Close client
+        self.cluster.close()  # Release resources
 
     def create_default_data_set(self, ds_name: str) -> _DaskDataSet:
         """Factory method for creating the default dataset for the runner.
@@ -115,7 +131,7 @@ class DaskRunner(AbstractRunner):
         hook_manager = _create_hook_manager()
         _register_hooks(hook_manager, settings.HOOKS)
         _register_hooks_setuptools(hook_manager, settings.DISABLE_HOOKS_FOR_PLUGINS)
-
+        
         return run_node(node, catalog, hook_manager, is_async, session_id)
 
     def _run(
@@ -125,34 +141,33 @@ class DaskRunner(AbstractRunner):
         hook_manager: PluginManager,
         session_id: str = None,
     ) -> None:
+        """The method implementing sequential pipeline running.
+
+        Args:
+            pipeline: The ``Pipeline`` to run.
+            catalog: The ``DataCatalog`` from which to fetch data.
+            hook_manager: The ``PluginManager`` to activate hooks.
+            session_id: The id of the session.
+
+        Raises:
+            Exception: in case of any downstream node failure.
+        """
         nodes = pipeline.nodes
+        done_nodes = set()
+
         load_counts = Counter(chain.from_iterable(n.inputs for n in nodes))
-        node_dependencies = pipeline.node_dependencies
-        node_futures = {}
 
-        client = Client.current()
-        for node in nodes:
-            dependencies = (
-                node_futures[dependency] for dependency in node_dependencies[node]
-            )
-            node_futures[node] = client.submit(
-                DaskRunner._run_node,
-                node,
-                catalog,
-                self._is_async,
-                session_id,
-                *dependencies,
-            )
+        # TODO: Variable/adaptive scaling
+        # self.cluster.scale(4)
+        for exec_index, node in enumerate(nodes):
+            try:
+                run_node(node, catalog, hook_manager, self._is_async, session_id)
+                done_nodes.add(node)
+            except Exception:
+                self._suggest_resume_scenario(pipeline, done_nodes, catalog)
+                raise
 
-        for i, (_, node) in enumerate(
-            as_completed(node_futures.values(), with_results=True)
-        ):
-            self._logger.info("Completed node: %s", node.name)
-            self._logger.info("Completed %d out of %d tasks", i + 1, len(nodes))
-
-            # Decrement load counts, and release any datasets we
-            # have finished with. This is particularly important
-            # for the shared, default datasets we created above.
+            # decrement load counts and release any data sets we've finished with
             for data_set in node.inputs:
                 load_counts[data_set] -= 1
                 if load_counts[data_set] < 1 and data_set not in pipeline.inputs():
@@ -160,6 +175,11 @@ class DaskRunner(AbstractRunner):
             for data_set in node.outputs:
                 if load_counts[data_set] < 1 and data_set not in pipeline.outputs():
                     catalog.release(data_set)
+
+            self._logger.info(
+                "Completed %d out of %d tasks", exec_index + 1, len(nodes)
+            )
+
 
     def run_only_missing(
         self, pipeline: Pipeline, catalog: DataCatalog
@@ -211,3 +231,69 @@ class DaskRunner(AbstractRunner):
             catalog.add(ds_name, self.create_default_data_set(ds_name))
 
         return self.run(to_rerun, catalog)
+        
+    def run(
+        self,
+        pipeline: Pipeline,
+        catalog: DataCatalog,
+        hook_manager: PluginManager = None,
+        session_id: str = None,
+    ) -> Dict[str, Any]:
+        """Run the ``Pipeline`` using the datasets provided by ``catalog``
+        and save results back to the same objects.
+
+        Args:
+            pipeline: The ``Pipeline`` to run.
+            catalog: The ``DataCatalog`` from which to fetch data.
+            hook_manager: The ``PluginManager`` to activate hooks.
+            session_id: The id of the session.
+
+        Raises:
+            ValueError: Raised when ``Pipeline`` inputs cannot be satisfied.
+
+        Returns:
+            Any node outputs that cannot be processed by the ``DataCatalog``.
+            These are returned in a dictionary, where the keys are defined
+            by the node outputs.
+
+        """
+        self._logger.info("================== 🏃 RUN 🏃 ==================")
+        hook_manager = hook_manager or _NullPluginManager()
+        catalog = catalog.shallow_copy()
+
+        # Check which datasets used in the pipeline are in the catalog or match
+        # a pattern in the catalog
+        registered_ds = [ds for ds in pipeline.data_sets() if ds in catalog]
+
+        # Check if there are any input datasets that aren't in the catalog and
+        # don't match a pattern in the catalog.
+        unsatisfied = pipeline.inputs() - set(registered_ds)
+
+        if unsatisfied:
+            raise ValueError(
+                f"Pipeline input(s) {unsatisfied} not found in the DataCatalog"
+            )
+
+        # Check if there's any output datasets that aren't in the catalog and don't match a pattern
+        # in the catalog.
+        free_outputs = pipeline.outputs() - set(registered_ds)
+        unregistered_ds = pipeline.data_sets() - set(registered_ds)
+
+        # Create a default dataset for unregistered datasets
+        for ds_name in unregistered_ds:
+            catalog.add(ds_name, self.create_default_data_set(ds_name))
+
+        if self._is_async:
+            self._logger.info(
+                "Asynchronous mode is enabled for loading and saving data"
+            )
+
+        # self.cluster.scale(jobs=3)  # Scale cluster based on number of nodes
+        self._run(pipeline, catalog, hook_manager, session_id)
+        self._logger.info("Closing Dask client and cluster")
+
+        self.client.close()  # Close client
+        self.cluster.close()  # Release resources
+
+        return {ds_name: catalog.load(ds_name) for ds_name in free_outputs}
+

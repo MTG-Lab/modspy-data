@@ -3,28 +3,27 @@ from loguru import logger
 import numpy as np
 import xarray as xr
 import pandas as pd
+from typing import List
+from .extras.datasets.knowledge_graph_dataset import KGDataSet
 
 
 
 
 class KnowledgeGraphScores:
         
-    nxo_info = ['n_common_ancestors', 'n_union_ancestors', 'batet', 'batet_log', 'resnik', 'resnik_scaled', 'lin', 'jiang', 'jiang_seco']
-    
-    def __init__(self, graphs, col_names=('target', 'modifier', 'target_GO', 'modifier_GO'), saved_scores=None) -> None:
-        logger.info(graphs)
-        self.go_kg = graphs['go'] 
-        # self.wpo_kg = graphs['wpo']
-        self.saved_scores = None
+    kg_name: str
+    go_kg: KGDataSet
+    nxo_info: List[str] = ['n_common_ancestors', 'n_union_ancestors', 'batet', 'batet_log', 'resnik', 'resnik_scaled', 'lin', 'jiang', 'jiang_seco']
+
+    def __init__(self, graphs, col_names=('target', 'modifier', 'target_GO', 'modifier_GO')) -> None:
+        # logger.info(graphs)
+        self.kg_name = list(graphs.keys())    # Getting the name of the KG
+        self.go_kg = graphs[self.kg_name[0]]
         self.col_names = col_names
         
-        # if saved_scores != None:
-        #     self.saved_scores = pd.read_csv(config.data_dir/f"interim/jan_2023_all_combs_scores_2023-01-21.tsv", sep='\t')
-        
         mix_methods = ['max', 'avg', 'bma']
-        ontos = graphs.keys()
         self.score_names = []
-        for o in ontos:
+        for o in self.kg_name:
             for l in self.nxo_info:
                 for p in mix_methods:
                     self.score_names.append(f"{o}_{l}_{p}")
@@ -44,6 +43,9 @@ class KnowledgeGraphScores:
             measures = self.nxo_info
         
         # Creating xarray to store similarity
+        # logger.debug(a.shape)
+        # logger.debug(a)
+        # logger.debug(b.shape)
         sim_arr = xr.DataArray(
             np.zeros((len(a), len(b), 9)), 
             dims=('target', 'candidate', 'score'), 
@@ -58,10 +60,10 @@ class KnowledgeGraphScores:
                 try:
                     sim = nxo.similarity(i, j).results() # Get similarity from NXOntology routine
                 except Exception as e:
-                    logger.warning(repr(e))
+                    # logger.warning(repr(e))
                     continue
                 sim_arr.loc[i,j] = [v for k, v in sim.items() if k in self.nxo_info] # Filterning only score from dictionary
-        sim_arr = xr.where(sim_arr>0, sim_arr, np.nan) # Mask 0 or NaNs
+        sim_arr = xr.where(sim_arr>0, sim_arr, np.nan) # Mask 0 for NaNs
         
         sim_scores = {}
         for i in measures:
@@ -95,34 +97,31 @@ class KnowledgeGraphScores:
         return len(self.nxo_info) * 3
 
     def get_scores(self, row):
+        # logger.info(row)
+        # logger.info(self.col_names)
         _g = row[self.col_names[0]]
         _tg = row[self.col_names[1]]
-        
-        # # check if already calculated
-        # if len(self.saved_scores):
-        #     row = self.saved_scores[(self.saved_scores[self.col_names[0]]==_g) & (self.saved_scores[self.col_names[1]]==_tg)]
-        #     if len(row):
-        #         # ic(row.iloc[0])
-        #         return row.iloc[0]
         
         result = {
             self.col_names[0]: _g,
             self.col_names[1]: _tg
         }
         # GO
-        logger.info(f"GO for {_g} and {_tg}")
+        # logger.info(f"GO for {_g} and {_tg}")
         _g_annos = row[self.col_names[2]]
         _tg_annos = row[self.col_names[3]]
+        if isinstance(_g_annos, str):
+            _g_annos = pd.Series(_g_annos.split(','))
+        elif np.isnan(_g_annos):
+            _g_annos = pd.Series([])
+        if isinstance(_tg_annos, str):
+            _tg_annos = pd.Series(_tg_annos.split(','))
+        elif np.isnan(_tg_annos):
+            _tg_annos = pd.Series([])
+        # logger.info(_g_annos)
+        # logger.info(_tg_annos)
         _scores = self.termgroup_sim(_tg_annos, _g_annos, self.go_kg[0], measures=self.nxo_info, mixing=['max','avg','bma'])
         for k, s in _scores.items():
-            result[f"go_{k}"] = s.item(0) if s else s
+            result[f"{self.kg_name[0]}_{k}"] = s.item(0) if s else s
         
-        # # WPO
-        # logger.info(f"WPO for {_g} and {_tg}")
-        # _g_annos = self.wpo_kg.filtered_df[self.wpo_kg.filtered_df[1]==_g][4].unique()
-        # _tg_annos = self.wpo_kg.filtered_df[self.wpo_kg.filtered_df[1]==_tg][4].unique()
-        # _scores = self.termgroup_sim(_tg_annos, _g_annos, self.wpo_kg.nxo, measures=self.nxo_info, mixing=['max','avg','bma'])
-        # for k, s in _scores.items():
-        #     result[f"wpo_{k}"] = s.item(0) if s else s
-        # ic(f"NA----",pd.Series(result, index=['wormbase_gene_id', 'target_gene_id']+self.score_names))
         return pd.Series(result, index=[self.col_names[0], self.col_names[1]]+self.score_names)

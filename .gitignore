@@ -10,6 +10,7 @@ conf/**/*credentials*
 
 # ignore everything in the following folders
 data/**
+logs/**
 
 # except their sub-folders
 !data/**/
@@ -19,6 +20,12 @@ data/**
 
 ##########################
 # Common files
+
+# Output files
+*.out
+
+# VSCode
+.vscode/
 
 # IntelliJ
 .idea/

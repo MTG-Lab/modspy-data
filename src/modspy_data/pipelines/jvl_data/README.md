@@ -7,6 +7,8 @@
 <!---
 Please describe your modular pipeline here.
 -->
+1. Clean: Remove quotes, unnecessary columns, and rename columns
+2. Annotate: Add GO terms for pairs of genes
 
 ## Pipeline inputs
 

@@ -29,6 +29,34 @@ from kedro.framework.cli.utils import (
 )
 from kedro.framework.session import KedroSession
 from kedro.utils import load_obj
+from omegaconf import OmegaConf
+
+
+
+def _instantiate_runner(runner, is_async, project_context):
+    """Instantiate a kedro runner object for DaskRunner.
+    Copied from https://docs.kedro.org/en/stable/deployment/dask.html
+
+    Args:
+        runner (_type_): _description_
+        is_async (bool): _description_
+        project_context (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    runner_class = load_obj(runner, "kedro.runner")
+    runner_kwargs = dict(is_async=is_async)
+
+    if runner.endswith("SLURMRunner"):
+        dask_params = project_context.params.get("dask") or {}
+        n_workers = dask_params.get('n_workers', None)
+        slurm_args = dask_params.get('slurm', {})
+        client_args = dask_params.get('client', {})
+        runner_kwargs.update(n_workers=n_workers, slurm_args=slurm_args, client_args=client_args)
+
+    return runner_class(**runner_kwargs)
+
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, name=__file__)
@@ -85,28 +113,6 @@ def cli():
     callback=_split_params,
 )
 # pylint: disable=too-many-arguments,unused-argument
-
-def _instantiate_runner(runner, is_async, project_context):
-    """Instantiate a kedro runner object for DaskRunner.
-    Copied from https://docs.kedro.org/en/stable/deployment/dask.html
-
-    Args:
-        runner (_type_): _description_
-        is_async (bool): _description_
-        project_context (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    runner_class = load_obj(runner, "kedro.runner")
-    runner_kwargs = dict(is_async=is_async)
-
-    if runner.endswith("DaskRunner"):
-        client_args = project_context.params.get("dask_client") or {}
-        runner_kwargs.update(client_args=client_args)
-
-    return runner_class(**runner_kwargs)
-
 def run(
     tag,
     env,
@@ -124,9 +130,6 @@ def run(
     params,
 ):
     """Run the pipeline."""
-
-    ##### ADD YOUR CUSTOM RUN COMMAND CODE HERE #####
-    runner = load_obj(runner or "SequentialRunner", "kedro.runner")
 
     tag = _get_values_as_tuple(tag) if tag else tag
     node_names = _get_values_as_tuple(node_names) if node_names else node_names

@@ -10,12 +10,47 @@
 # https://kedro.readthedocs.io/en/stable/data/data_catalog.html
 #
 
+
+# Declaring YAML anchors (&) and references (*) to avoid repetition
+_tsv: &tsv
+  type: pandas.CSVDataSet
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+
+
+#####################################################
+################# Raw Datasets ######################
+#####################################################
+
+
+# MTG Lab data
+zyg1_raw:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/mtg/combined_dataset_2022-11-15-07-04.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+    sep: "\t"
+
+zyg1_truemods:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/mtg/confirmed_modifiers.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+    sep: "\t"
+
+
 # OLIDA (https://olida.ibsquare.be/api/swagger/) data
 olida_combinations:
   type: pandas.CSVDataSet
   filepath: data/01_raw/olida/Combination.tsv
   load_args:
-    sep: '\t'
+    sep: "\t"
   save_args:
     index: False
 
@@ -23,68 +58,258 @@ olida_genes:
   type: pandas.CSVDataSet
   filepath: data/01_raw/olida/Gene.tsv
   load_args:
-    sep: '\t'
+    sep: "\t"
   save_args:
     index: False
 
-# Study conduucted by Jolanda van Leeuwen ()
+olida_gene_combinations:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/olida/GeneCombination.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+
+
+# Study conduucted by Jolanda van Leeuwen (JVL)
 jvl:
   type: pandas.ExcelDataSet
   filepath: data/01_raw/jvl/media-2.xlsx
   load_args:
     sheet_name: 'Data'
 
-# Annotated JVL data
-jvl_annotated:
+
+##################################################################
+########### DB, Ontologies, and other data sources ###############
+##################################################################
+
+
+# NCBI (https://www.ncbi.nlm.nih.gov/) data
+############################################
+
+# Gene info from https://ftp.ncbi.nih.gov/gene/DATA/gene_info.gz on 7 Dec 2023
+ncbi_gene_info:
   type: pandas.CSVDataSet
-  filepath: data/02_intermediate/jvl/annotated.csv
+  filepath: data/01_raw/ncbi/gene_info.gz
   load_args:
-    sep: ','
+    compression: gzip
+    sep: "\t"
+    names: ['tax_id', 'GeneID', 'Symbol', 'LocusTag', 'Synonyms', 'dbXrefs', 'chromosome', 'map_location', 'description', 'type_of_gene', 'Symbol_from_nomenclature_authority', 'Full_name_from_nomenclature_authority', 'Nomenclature_status', 'Other_designations', 'Modification_date', 'Feature_type']
+    usecols: ['tax_id', 'GeneID', 'Symbol', 'LocusTag', 'Synonyms', 'dbXrefs', 'chromosome', 'map_location', 'description', 'type_of_gene', 'Symbol_from_nomenclature_authority', 'Full_name_from_nomenclature_authority', 'Nomenclature_status', 'Other_designations', 'Modification_date', 'Feature_type']
+    na_values: ['-']
+    skiprows: 1
   save_args:
     index: False
 
-# Scored JVL data
-jvl_scored:
+# Neighboring genes: from https://ftp.ncbi.nih.gov/gene/DATA/gene_neighbors.gz on 7 Dec 2023
+ncbi_gene_neighbors:
   type: pandas.CSVDataSet
-  filepath: data/02_intermediate/jvl/scored.csv
+  filepath: data/01_raw/ncbi/gene_neighbors.gz
   load_args:
-    sep: ','
+    compression: gzip
+    sep: "\t"
+    na_values: ['-']
+    skiprows: 1
   save_args:
     index: False
 
-# MTG Lab data
-zyg1_scored:
-  type: pandas.CSVDataSet
-  filepath: data/02_intermediate/mtg/scored.csv
+
+# Ontologies
+############################################
+
+# Monarch KG 
+# Downloaded from: https://data.monarchinitiative.org/monarch-kg-dev/2023-12-16/index.html on 16 Dec 2023
+# The nodes and edges tsv file are extracted from the tarball (monarch-kg.tar.gz)
+monarch_nodes:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/01_raw/monarch/monarch-kg_nodes.tsv
   load_args:
-    sep: ','
-  save_args:
-    index: False
+    sep: "\t"
+    dtype:
+      id: str
+      category: str
+      name: str
+      xref: str
+      provided_by: str
+      synonym: str
+      full_name: str
+      in_taxon: str
+      in_taxon_label: str
+      symbol: str
+      description: str
+      deprecated: str
+      iri: str
+      same_as: str
+
+monarch_edges:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/01_raw/monarch/monarch-kg_edges.tsv
+  load_args:
+    sep: "\t"
+    dtype:
+      id: str
+      original_subject: str
+      predicate: str
+      original_object: str
+      category: str
+      aggregator_knowledge_source: str
+      primary_knowledge_source: str
+      provided_by: str
+      publications: str
+      qualifiers: str
+      frequency_qualifier: str
+      has_evidence: str
+      negated: str
+      onset_qualifier: str
+      sex_qualifier: str
+      stage_qualifier: str
+      relation: str
+      subject: str
+      object: str
+      
+monarch_pyg:
+  type: modspy_data.extras.datasets.torch.TorchFile
+  filepath: data/02_intermediate/monarch/pyg_hetero_data.pt
+
+# sample
+monarch_nodes_sample:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/02_intermediate/monarch/sample_nodes.tsv
+  load_args:
+    sep: "\t"
+    dtype:
+      id: str
+      category: str
+      name: str
+      xref: str
+      provided_by: str
+      synonym: str
+      full_name: str
+      in_taxon: str
+      in_taxon_label: str
+      symbol: str
+      description: str
+      deprecated: str
+      iri: str
+      same_as: str
+
+monarch_edges_sample:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/02_intermediate/monarch/sample_edges.tsv
+  load_args:
+    sep: "\t"
+    dtype:
+      id: str
+      original_subject: str
+      predicate: str
+      original_object: str
+      category: str
+      aggregator_knowledge_source: str
+      primary_knowledge_source: str
+      provided_by: str
+      publications: str
+      qualifiers: str
+      frequency_qualifier: str
+      has_evidence: str
+      negated: str
+      onset_qualifier: str
+      sex_qualifier: str
+      stage_qualifier: str
+      relation: str
+      subject: str
+      object: str
+
+monarch_pyg_sample:
+  type: modspy_data.extras.datasets.torch.TorchFile
+  filepath: data/02_intermediate/monarch/pyg_sample.pt
 
 
 
 # Gene Ontology (https://geneontology.org/docs/download-ontology/) data
 go:
   type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
-  filepath: http://purl.obolibrary.org/obo/go/go-basic.obo
+  filepath: data/01_raw/go/go-basic.obo
 
 goa:
+  type: modspy_data.extras.datasets.gaf.GAFDataFile
+  filepath: data/01_raw/go/goa_human.gaf.gz
+
+
+# Wormbase Gene Ontology and GAF files collected on 7 Dec 2023
+wb_go:
+  type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
+  filepath: data/01_raw/wormbase/gene_ontology.WS290.obo
+
+wb_goa:
+  type: modspy_data.extras.datasets.gaf.GAFDataFile
+  filepath: data/01_raw/wormbase/gene_association.WS290.wb
+
+  # load_args:
+  #   sep: "\t"
+  #   comment: '!'
+  # save_args:
+  #   index: False
+
+
+# Human Phenotype Ontology (https://hpo.jax.org/app/download/ontology) data on 7 Dec 2023
+# phenotype.hpoa file does not contains gene associations.
+# We will use their genes_to_phenotype.txt file instead.
+hpo:
+  type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
+  filepath: data/01_raw/po/hp-full.obo
+
+hpoa:
   type: pandas.CSVDataSet
-  filepath: http://geneontology.org/gene-associations/goa_human.gaf.gz
+  filepath: data/01_raw/po/genes_to_phenotype.txt
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+
+
+
+# Wormbase Phenotype Ontology and annotation GAF files collected on 7 Dec 2023
+wb_po:
+  type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
+  filepath: data/01_raw/wormbase/phenotype_ontology.WS290.obo
+
+wb_poa:
+  type: modspy_data.extras.datasets.gaf.GAFDataFile
+  filepath: data/01_raw/wormbase/phenotype_association.WS290.wb
+
+
+# Disease Ontology from https://github.com/DiseaseOntology/HumanDiseaseOntology/ on 7 Dec 2023
+# We used  doid-merged.obo : includes the inferred branches, includes ontology imported. This was
+# created for Alliange Genome Resources (AGR) and is the most up-to-date version of the ontology.
+do:
+  type: modspy_data.extras.datasets.knowledge_graph_dataset.KGDataSet
+  filepath: data/01_raw/do/doid-merged.obo
+
+# DO annotation was downloaded from AGR on 7 Dec 2023
+doa:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/do/DISEASE-ALLIANCE_COMBINED.tsv.gz
   load_args:
     compression: gzip
-    sep: '\t'
-    names: ['DB', 'DB_Object_ID', 'DB_Object_Symbol', 'Qualifier', 'GO_ID', 'DB:Reference', 'Evidence_Code', 'With_From', 'Aspect', 'DB_Object_Name', 'DB_Object_Synonym', 'DB_Object_Type', 'Taxon', 'Date', 'Assigned_By', 'Annotation_Extension', 'Gene_Product_Form_ID']
-    usecols: ['DB_Object_ID', 'GO_ID', 'Evidence_Code', 'Aspect', 'DB_Object_Name', 'DB_Object_Synonym', 'DB_Object_Type', 'Taxon', 'Date', 'Assigned_By', 'Annotation_Extension', 'Gene_Product_Form_ID']
-    dtype: {'DB_Object_ID': str, 'GO_ID': str, 'Evidence_Code': str, 'Aspect': str, 'DB_Object_Name': str, 'DB_Object_Synonym': str, 'DB_Object_Type': str, 'Taxon': str, 'Date': str, 'Assigned_By': str, 'Annotation_Extension': str, 'Gene_Product_Form_ID': str}
-    na_values: ['']
-    #skiprows: 23
-    comment: '!'
+    sep: "\t"
+    comment: '#'
+  save_args:
+    index: False
+
+
+# OGEE (https://v3.ogee.info/) data downloaded on 7 Dec 2023
+gene_essentiality:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/ogee/gene_essentiality.txt.gz
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
 
 
 # STRING-DB (https://string-db.org/cgi/download.pl) data
 string_interactions:
-  type: pandas.CSVDataSet
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
   filepath: data/01_raw/stringdb/9606.protein.links.full.v12.0.txt
   load_args:
     sep: ' '
@@ -100,12 +325,174 @@ string_interactions:
     skiprows: 1
 
 string_alias:
-  type: pandas.CSVDataSet
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
   filepath: data/01_raw/stringdb/9606.protein.aliases.v12.0.txt.gz
   load_args:
     compression: gzip
-    sep: '\t'
+    sep: "\t"
     names: ['protein', 'alias', 'source']
     usecols: ['protein', 'alias', 'source']
     na_values: ['']
     skiprows: 1
+
+
+
+#####################################################
+################# Cleaned Datasets ##################
+#####################################################
+
+
+olida_pairs:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/olida/pairs.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+    sep: "\t"
+
+olida_annotated:
+  <<: *tsv
+  filepath: data/02_intermediate/olida/annotated.tsv
+    
+olida_scored:
+  <<: *tsv
+  filepath: data/02_intermediate/olida/dec_2023_scored.tsv
+
+olida_scored_pheno:
+  <<: *tsv
+  filepath: data/02_intermediate/olida/scored_pheno.tsv
+  
+olida_scored_disease:
+  <<: *tsv
+  filepath: data/02_intermediate/olida/scored_disease.tsv
+
+olida_columns:
+  type: MemoryDataSet
+  data: ['gene_a', 'gene_b', 'target_GOs', 'modifier_GOs']
+  
+olida_po_columns:
+  type: MemoryDataSet
+  data: ['gene_a', 'gene_b', 'target_POs', 'modifier_POs']
+
+olida_do_columns:
+  type: MemoryDataSet
+  data: ['gene_a', 'gene_b', 'target_DOs', 'modifier_DOs']
+
+#####################################################
+################# Annotated Datasets ################
+#####################################################
+
+
+annotated:
+  <<: *tsv
+  filepath: data/02_intermediate/v3/annotated.tsv
+
+zyg1_scored:
+  <<: *tsv
+  filepath: data/02_intermediate/mtg/scored.csv
+
+zyg1_features:
+  <<: *tsv
+  filepath: data/02_intermediate/mtg/features.csv
+
+zyg1_annotated:
+  <<: *tsv
+  filepath: data/02_intermediate/mtg/annotated.csv
+
+zyg1_scored_pheno:
+  <<: *tsv
+  filepath: data/02_intermediate/mtg/scored_pheno.tsv
+  
+zyg1_scored_disease:
+  <<: *tsv
+  filepath: data/02_intermediate/mtg/scored_disease.tsv
+
+zyg1_columns:
+  type: MemoryDataSet
+  data: ['target_gene_symbol', 'gene_symbol', 'target_GOs', 'modifier_GOs']
+zyg1_po_columns:
+  type: MemoryDataSet
+  data: ['target_gene_symbol', 'gene_symbol', 'target_POs', 'modifier_POs']
+zyg1_do_columns:
+  type: MemoryDataSet
+  data: ['target_gene_symbol', 'gene_symbol', 'target_DOs', 'modifier_DOs']
+
+
+
+# Annotated JVL data
+jvl_annotated:
+  <<: *tsv
+  filepath: data/02_intermediate/jvl/annotated.csv
+
+# Scored JVL data
+jvl_scored:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/02_intermediate/jvl/scored.csv
+  # load_args:
+  #   sep: ','
+  save_args:
+    index: False
+    
+jvl_scored@pandas:
+  <<: *tsv
+  filepath: data/02_intermediate/jvl/scored.tsv
+
+jvl_scored_pheno:
+  <<: *tsv
+  filepath: data/02_intermediate/jvl/scored_pheno.tsv
+  
+jvl_scored_disease:
+  <<: *tsv
+  filepath: data/02_intermediate/jvl/scored_disease.tsv
+
+jvl_columns:
+  type: MemoryDataSet
+  data: ['QueryGene', 'SuppressorGene', 'target_GOs', 'modifier_GOs']
+jvl_po_columns:
+  type: MemoryDataSet
+  data: ['QueryGene', 'SuppressorGene', 'target_POs', 'modifier_POs']
+jvl_do_columns:
+  type: MemoryDataSet
+  data: ['QueryGene', 'SuppressorGene', 'target_DOs', 'modifier_DOs']
+
+
+
+# JVL data with all features
+jvl_features:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/jvl/features.csv
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+    sep: "\t"
+
+
+# Combined Dataset
+modifiers:
+  type: pandas.CSVDataSet
+  filepath: data/04_feature/modifier_merged_dataset.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    index: False
+    sep: "\t"
+
+
+
+xs:
+  type: MemoryDataSet
+  data: [5, 4,7,8,9,9,0,5,8,8,66,5,4,6]
+n:
+  type: MemoryDataSet
+  data: 200
+m:
+  type: MemoryDataSet
+  data: 5
+m2:
+  type: MemoryDataSet
+  data: 5
+v:
+  type: MemoryDataSet
+  data: 3
