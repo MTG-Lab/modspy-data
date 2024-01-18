@@ -1,0 +1,49 @@
+# Base requirements
+black
+flake8
+ipython
+isort
+jupyter
+jupyterlab
+kedro[all]
+# kedro-datasets[spark.SparkDataSet]
+kedro-telemetry
+nbstripout
+pytest-cov
+pytest-mock
+pytest
+
+# Other requirements
+omegaconf
+openpyxl
+# kedro-viz
+loguru
+tqdm
+texttable
+goatools
+
+# Data Science
+numpy
+pandas
+xarray
+#ray[air]
+pyspark
+
+# Distributed Computing & Scaling
+pyarrow
+dask
+dask-jobqueue
+
+# Graph & Ontology Related
+pronto
+# nxontology
+networkx
+
+# Plotting 
+hiplot
+plotly
+matplotlib
+umap-learn
+seaborn
+pyvis
+pygraphviz
