@@ -10,7 +10,7 @@ from .nodes import add_annotations, clean_jvl, mean, mean_sos, variance, annotat
 def create_pipeline(**kwargs) -> Pipeline:
     return pipeline(
         [
-            node(kgx_to_pyg, ['monarch_nodes', 'monarch_edges'], 'monarch_pyg', name='monarch_kgx_to_pyg'),
+            node(kgx_to_pyg, ['monarch_nodes_categorized', 'monarch_edges_categorized'], 'monarch_pyg', name='monarch_kgx_to_pyg'),
         ],
 
 

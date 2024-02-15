@@ -128,6 +128,19 @@ def process_row(row, id_to_category, node_mapping):
     edge_key = (subject_type, row['predicate'], object_type)
     return edge_key, (node_mapping[row['subject']], node_mapping[row['object']])
 
+
+# Function to convert DataFrame rows to tuples for the Bag
+def create_edge_tuple(row):
+    return (row['subject_category'], row['predicate'], row['object_category']), row['subject_id'], row['object_id']
+
+def binop(accumulator, edge):
+    return accumulator.append((edge[1], edge[2]))
+
+def combine(accumulator1, accumulator2):
+    return accumulator1.extend(accumulator2)
+
+
+
 def kgx_to_pyg(nodes: dd.DataFrame, edges: dd.DataFrame) -> HeteroData:
     """Generate PyTorch Geometric HeteroData type graph from nodes and edges.
 
@@ -139,48 +152,89 @@ def kgx_to_pyg(nodes: dd.DataFrame, edges: dd.DataFrame) -> HeteroData:
         HeteroData: _description_
     """
     logger = logging.getLogger(__name__)    
+
+
+    # Group by 'node_type' and assign type-wise indices
+    nodes_df['type_index'] = nodes_df.groupby('category').cumcount()
+    # reseting index based on id
+    nodes_df = nodes_df.set_index('id')
+    
+    ############# CHANGE ME #######################
+    # Should be removed. It is added because the edge dataframe has erroneous column names.
+    edges_df = edges_df.rename(columns={'subject_category': 'e_category', 'edge_category': 'subject_category'}).rename(columns={'e_category': 'edge_category'})
+    ###############################################
+    _edf = edges_df.merge(nodes_df, left_on='subject', right_index=True, suffixes=('_ndf', '_edf'))
+    # print(f"Columns after merging on subject category: {_edf.columns}")
+    _edf = _edf.rename(columns={'type_index': 'subject_id'})
+    # print(f"Columns after merging on subject category: {_edf.columns}")
+    # display(_edf.head())
+    _edf = _edf.merge(nodes_df, left_on='object', right_index=True, suffixes=('_ndf', '_edf'))
+    # print(f"Columns after merging on object category: {_edf.columns}")
+    _edf = _edf.rename(columns={'type_index': 'object_id'})
+    # print(f"Columns after merging on object category: {_edf.columns}")
+    # display(_edf.head())
+    
+    # Keep only the columns we need
+    edges = _edf[['id','subject', 'subject_id', 'subject_category', 'predicate', 'edge_category', 'object_category', 'object_id', 'object']]
+    # print(f"Columns after renaming and trimming: {edges.columns}")
         
-    nodes = nodes.reset_index(drop=True)
+    
+    logger.info(f"🔵⚫🔘 Processing Nodes")
+    ################## INITIALIZE NODES ##################
     # Prepare node mapping and node types
-    node_mapping = {node_id: i for i, node_id in enumerate(nodes['id'].unique().compute())}
-    node_types = nodes['category'].unique().compute()
+    node_mapping = {node_id: i for i, node_id in enumerate(nodes_df.index.unique())}
+    node_types = nodes_df['category'].unique()
 
     # Initialize HeteroData for the heterogeneous graph
     data = HeteroData()
+        
+    # Prepare node mapping and node types
+    # node_mapping = {node_id: i for i, node_id in enumerate(nodes_df['id'].unique())}
+    node_types = nodes_df['category'].unique()
 
-    logger.info(f"🔵⚫🔘 Processing Nodes")
     # Add nodes to the graph
     for node_type in node_types:
-        # mask = nodes['category'].compute() == node_type
-        type_nodes = nodes[nodes['category'] == node_type].compute()
-        data[node_type].x = torch.tensor(type_nodes.index.to_list(), dtype=torch.long)
+        # get nodes of type `node_type`
+        mask = nodes_df['category'] == node_type
+        type_nodes = nodes_df[mask].compute()
+        
+        # node_features = torch.ones((type_nodes.shape[0], 1))
+        data[node_type].num_nodes = type_nodes.shape[0] # node_features # torch.tensor(type_nodes.index.to_list(), dtype=torch.long).view(len(type_nodes.index.to_list()),1)
+
+        # Add dummy features (e.g., a simple constant feature)
+        data[node_type].x = torch.ones((data[node_type].num_nodes, 1))  # Each user has a feature vector of [1]
 
     logger.info(f"Node processing done 🔵⚫🔘 ")
 
-    # Assuming `nodes` is a Dask DataFrame with 'id' and 'category' columns
-    # and `node_mapping` is a dictionary mapping node ids to some values
-
-    # Create a dictionary mapping node ids to categories
-    id_to_category = nodes.set_index('id')['category'].compute().to_dict()
-
     logger.info(f"➡️ Creating edges")
-    # Apply the function to each row of the `edges` DataFrame
-    edges['result'] = edges.apply(lambda row: process_row(row, id_to_category, node_mapping), axis=1, meta=('object'))
 
-    # Compute the result
-    result = edges['result'].compute()
+    ################## INITIALIZE EDGES ##################
+    # Convert the edge categories to categoricals for efficiency
+    edges['subject_category'] = edges['subject_category'].astype('category')
+    edges['predicate'] = edges['predicate'].astype('category')
+    edges['object_category'] = edges['object_category'].astype('category')
+    edges['edge_category'] = edges['edge_category'].astype('category')
 
-    # Create the `edge_type_mappings` dictionary
-    edge_type_mappings = {}
-    for edge_key, value in result:
-        if edge_key not in edge_type_mappings:
-            edge_type_mappings[edge_key] = []
-        edge_type_mappings[edge_key].append(value)
+    # From unknown type categorical to known type categorical
+    edges = edges.categorize(columns=['subject_category','predicate','object_category','edge_category'])
+
+    # Prepare edge types and mappings
+    edge_types = edges['edge_category'].unique().compute()  # Compute edge types on scheduler
+        
+
+    # Create a Bag from the DataFrame, and map the conversion function to each row
+    edges_bag = edges.map_partitions(lambda df: df.apply(create_edge_tuple, axis=1)).to_bag()
+    # display(edges_bag.compute())
+
+    # Use foldby with the process_tuples function
+    edge_type_mappings = edges_bag.foldby(key=lambda x: x[0], binop=binop, combine=combine, initial=[])
+    edge_type_mappings = edge_type_mappings.compute()  # Trigger the computation
+
 
     logger.info(f"➡️ Result done, will now do mapping")
 
     # Add edges to the graph
-    for edge_key, edge_indices in edge_type_mappings.items():
+    for edge_key, edge_indices in edge_type_mappings:
         edge_index = torch.tensor(edge_indices, dtype=torch.long).t().contiguous()
         data[edge_key].edge_index = edge_index
 

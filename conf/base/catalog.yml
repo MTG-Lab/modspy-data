@@ -166,10 +166,28 @@ monarch_edges:
       relation: str
       subject: str
       object: str
+
+monarch_nodes_categorized:
+  type: modspy_data.extras.datasets.dask.DaskDataFrameDataSet
+  filepath: data/01_raw/monarch/monarch-kg_nodes.tsv
+  load_args:
+    sep: "\t"
+    usecols: ['id', 'category', 'name', 'in_taxon', 'in_taxon_label', 'symbol']
+    dtype:
+      id: str
+      category: str
+      name: str
+      in_taxon: str
+      in_taxon_label: str
+      symbol: str
+
+monarch_edges_categorized:
+  type: dask.ParquetDataSet
+  filepath: data/02_intermediate/monarch/edges_with_node_cat
       
 monarch_pyg:
   type: modspy_data.extras.datasets.torch.TorchFile
-  filepath: data/02_intermediate/monarch/pyg_hetero_data.pt
+  filepath: data/02_intermediate/monarch/pyg_hetero_data-v1.pt
 
 # sample
 monarch_nodes_sample:
