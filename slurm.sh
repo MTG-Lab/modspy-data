@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --account=def-mtarailo_cpu
-#SBATCH --cpus-per-task=4        # number of cores per MPI process
-#SBATCH --mem-per-cpu=32GB      # memory; default unit is megabytes
-#SBATCH --time=00-08:50           # time (DD-HH:MM)
+#SBATCH --cpus-per-task=1        # number of cores per MPI process
+#SBATCH --mem-per-cpu=128GB      # memory; default unit is megabytes
+#SBATCH --time=00-02:30:00           # time (DD-HH:MM:SS)
 #SBATCH -J dask-king
 #SBATCH -e ./logs/dask-king-%J.err
 #SBATCH -o ./logs/dask-king-%J.out
-###SBATCH## --mail-user=kmtahsinhassan.rahit@ucalgary.ca
-###SBATCH## --mail-type=ALL
+#SBATCH --mail-user=kmtahsinhassan.rahit@ucalgary.ca
+#SBATCH --mail-type=ALL
 
 module --force purge
 module load StdEnv/2020

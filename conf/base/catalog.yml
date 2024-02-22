@@ -166,10 +166,22 @@ monarch_edges:
       relation: str
       subject: str
       object: str
-      
+
+monarch_nodes_categorized:
+  type: dask.ParquetDataSet
+  filepath: data/02_intermediate/monarch/nodes_with_type_idx
+
+monarch_edges_categorized:
+  type: dask.ParquetDataSet
+  filepath: data/02_intermediate/monarch/edges_with_node_cat
+
+monarch_edge_index:
+  type: modspy_data.extras.datasets.dask.DaskBagDataset
+  filepath: data/02_intermediate/monarch/edge_index
+
 monarch_pyg:
   type: modspy_data.extras.datasets.torch.TorchFile
-  filepath: data/02_intermediate/monarch/pyg_hetero_data.pt
+  filepath: data/02_intermediate/monarch/pyg_hetero_data-v1.pt
 
 # sample
 monarch_nodes_sample:
