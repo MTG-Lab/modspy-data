@@ -3,6 +3,7 @@ This is a boilerplate pipeline 'jvl_data'
 generated using Kedro 0.18.12
 """
 
+import ast
 import pandas as pd
 from modspy_data.helpers import KnowledgeGraphScores
 from kedro.io import *
@@ -134,8 +135,13 @@ def process_row(row, id_to_category, node_mapping):
 
 # Function to convert DataFrame rows to tuples for the Bag
 def create_edge_tuple(row):
-    return (row['subject_category'], row['predicate'], row['object_category']), row['subject_id'], row['object_id']
+    return row['subject_category'], row['predicate'], row['object_category'], row['subject_id'], row['object_id']
 
+# # Function to convert a tuple to a string
+# def tuple_to_string(t):
+#     # Convert the tuple to a string format of your choice
+#     # This example uses a simple comma-separated format
+#     return ','.join(map(str, t))
 
 def binop(accumulator, edge):
     if accumulator is None:
@@ -143,8 +149,87 @@ def binop(accumulator, edge):
     accumulator.append((edge[1], edge[2]))
     return accumulator
 
+# def combine(accumulator1, accumulator2):
+#     return accumulator1.extend(accumulator2)
 def combine(accumulator1, accumulator2):
-    return accumulator1.extend(accumulator2)
+    if accumulator1 is None:
+        accumulator1 = []
+    if accumulator2 is None:
+        accumulator2 = []
+    return accumulator1 + accumulator2  # Use + for list concatenation
+
+
+
+# Define a function to convert a line (string) back into a tuple
+def parse_line(line):
+    # Strip leading/trailing whitespace and newline characters
+    line = line.strip()
+    # Use `ast.literal_eval` to safely evaluate the string as a Python literal
+    # This converts the string representation of a tuple back into an actual tuple
+    return ast.literal_eval(line)
+
+
+
+def make_edge_bag(nodes_df: ParquetDataSet, edges_df: ParquetDataSet) -> db.Bag:
+    # Repartitioning for better memory management on Compute Canada
+    edges_df = edges_df.repartition(npartitions=16)
+    edges_df = edges_df.persist()  # if on a distributed system
+    
+    ############# CHANGE ME #######################
+    # Should be removed. It is added because the edge dataframe has erroneous column names.
+    edges_df = edges_df.rename(columns={'subject_category': 'e_category', 'edge_category': 'subject_category'}).rename(columns={'e_category': 'edge_category'})
+    ###############################################
+    # display(edges_df.head())
+    _edf = edges_df.merge(nodes_df, left_on='subject', right_on='id', suffixes=('_ndf', '_edf'))
+    # print(f"Columns after merging on subject category: {_edf.columns}")
+    # display(_edf.head())
+    _edf = _edf.rename(columns={'type_index': 'subject_id'})
+    # print(f"Columns after merging on subject category: {_edf.columns}")
+    # display(_edf.head())
+    _edf = _edf.merge(nodes_df, left_on='object', right_on='id', suffixes=('_ndf', '_edf'))
+    # print(f"Columns after merging on object category: {_edf.columns}")
+    _edf = _edf.rename(columns={'type_index': 'object_id'})
+    # print(f"Columns after merging on object category: {_edf.columns}")
+    # display(_edf.head())
+
+    # Keep only the columns we need
+    edges = _edf[['id','subject', 'subject_id', 'subject_category', 'predicate', 'edge_category', 'object_category', 'object_id', 'object']].copy()
+    # print(f"Columns after renaming and trimming: {edges.columns}")
+        
+    # logger.info(f"➡️ Creating edges")
+
+    ################## INITIALIZE EDGES ##################
+    # Convert the edge categories to categoricals for efficiency
+    edges['subject_category'] = edges['subject_category'].astype('category')
+    edges['predicate'] = edges['predicate'].astype('category')
+    edges['object_category'] = edges['object_category'].astype('category')
+    # edges['edge_category'] = edges['edge_category'].astype('category')
+
+    # From unknown type categorical to known type categorical
+    edges = edges.categorize(columns=['subject_category','predicate','object_category'])
+
+    # # Prepare edge types and mappings
+    # edge_types = edges['edge_category'].unique().compute()  # Compute edge types on scheduler
+
+    # Create a Bag from the DataFrame, and map the conversion function to each row
+    edges_bag = edges.map_partitions(lambda df: df.apply(create_edge_tuple, axis=1)).to_bag()
+
+    # # Map the conversion function over the bag to convert tuples to strings
+    edges_bag = edges_bag.map(lambda x: str(x))
+    
+    return edges_bag
+
+
+
+def bag_to_idx(edges_bag: db.Bag) -> db.Bag:
+    edges_bag = edges_bag.map(parse_line).persist()
+    
+    # Use foldby with the process_tuples function
+    edges_bag = edges_bag.foldby(key=lambda x: (x[0],x[1],x[2]), binop=binop, combine=combine, initial=[], split_every=8)
+    # edge_type_mappings = edge_type_mappings.compute()  # Trigger the computation
+
+    # etm = edges_bag.compute()  # Trigger the computation
+    return edges_bag
 
 
 def kgx_to_pyg(nodes_df: ParquetDataSet, edge_type_mappings: ParquetDataSet) -> HeteroData:

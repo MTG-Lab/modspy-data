@@ -46,13 +46,13 @@ class DaskBagDataset(AbstractDataSet):
         return db.read_text(self._filepath, **self._load_args)
         # return db.read_csv()
 
-    def _save(self, data: dd.DataFrame) -> None:
+    def _save(self, data: db.Bag) -> None:
         """Saves the Dask dataframe to the file.
 
         Args:
             data: The Dask dataframe to save.
         """
-        return db.to_textfiles(self._filepath, **self._save_args)
+        return data.to_textfiles(self._filepath, **self._save_args)
 
     def _describe(self) -> Dict[str, Any]:
         """Returns a dictionary that describes the dataset.
@@ -64,8 +64,6 @@ class DaskBagDataset(AbstractDataSet):
                  
                  
                  
-
-
 
 class DaskDataFrameDataSet(AbstractDataSet):
     """``DaskDataFrameDataSet`` loads and saves Dask dataframes."""

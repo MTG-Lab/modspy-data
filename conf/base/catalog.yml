@@ -175,9 +175,13 @@ monarch_edges_categorized:
   type: dask.ParquetDataSet
   filepath: data/02_intermediate/monarch/edges_with_node_cat
 
-monarch_edge_index:
+monarch_edges_bag:
   type: modspy_data.extras.datasets.dask.DaskBagDataset
-  filepath: data/02_intermediate/monarch/edge_index
+  filepath: data/02_intermediate/monarch/edges_bag
+
+monarch_edges_index:
+  type: modspy_data.extras.datasets.dask.DaskBagDataset
+  filepath: data/02_intermediate/monarch/edges_index
 
 monarch_pyg:
   type: modspy_data.extras.datasets.torch.TorchFile

@@ -5,12 +5,13 @@ generated using Kedro 0.18.12
 
 from kedro.pipeline import Pipeline, node, pipeline
 
-from .nodes import add_annotations, clean_jvl, mean, mean_sos, variance, annotate_olida, compute_similarity, kgx_to_edge_idx
+from .nodes import add_annotations, clean_jvl, mean, mean_sos, variance, annotate_olida, compute_similarity, kgx_to_edge_idx, make_edge_bag, bag_to_idx
 
 def create_pipeline(**kwargs) -> Pipeline:
     return pipeline(
         [
-            node(kgx_to_edge_idx, ['monarch_nodes_categorized', 'monarch_edges_categorized'], 'monarch_edge_index', name='monarch_kgx_to_edge_index'),
+            # node(make_edge_bag, ['monarch_nodes_categorized', 'monarch_edges_categorized'], 'monarch_edges_bag', name='monarch_kgx_to_edge_bag'),
+            node(bag_to_idx, ['monarch_edges_bag'], 'monarch_edges_index', name='edge_bag_to_idx'),
         ],
 
 

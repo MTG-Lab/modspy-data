@@ -2,7 +2,7 @@
 dask:
   n_workers: 2
   slurm:
-    cores: 4
+    cores: 2
     memory: 212GB
     processes: 1
     walltime: 01:15:00
