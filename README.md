@@ -18,7 +18,7 @@ In order to get the best out of the template:
 ## Help with Compute Canada Clusters
 1. Remove deafult modules: `module --force purge`
 2. Activate StdEnv/2020 module which is a pre-requisite for gcc: `module load StdEnv/2020`
-3. Activate following modules: `module load gcc/9.3.0 python/3.8.10 cuda/11.7 arrow/9.0.0` before actiavating your environment. A `module list` should look like this:
+3. Activate following modules: `module load gcc/9.3.0 python/3.8.10 cuda/11.8.0 arrow/9.0.0` before actiavating your environment. A `module list` should look like this:
 ```
 Currently Loaded Modules:
   1) CCconfig                 5) mii/1.1.2            9) python/3.8.10    (t)    13) gdrcopy/2.3
@@ -45,6 +45,11 @@ To install them, run:
 ```
 pip install -r src/requirements.txt
 ```
+
+> I used following commands to install PyTorch related packages on ComputeCanada's Graham cluster:
+
+`pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118`
+`pip install torch_geometric pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.0+cu118.html`
 
 ## How to run your Kedro pipeline
 
