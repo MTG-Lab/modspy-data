@@ -18,7 +18,7 @@ In order to get the best out of the template:
 ## Help with Compute Canada Clusters
 1. Remove deafult modules: `module --force purge`
 2. Activate StdEnv/2020 module which is a pre-requisite for gcc: `module load StdEnv/2020`
-3. Activate following modules: `module load gcc/9.3.0 python/3.8.10 cuda/11.8.0 arrow/9.0.0` before actiavating your environment. A `module list` should look like this:
+3. Activate following modules: `module load gcc/9.3.0 python/3.11 cuda/11.8.0 arrow/9.0.0 scipy-stack/2023b` before actiavating your environment. A `module list` should look like this:
 ```
 Currently Loaded Modules:
   1) CCconfig                 5) mii/1.1.2            9) python/3.8.10    (t)    13) gdrcopy/2.3
@@ -27,11 +27,13 @@ Currently Loaded Modules:
   4) StdEnv/2020     (S)      8) libffi/3.3          12) arrow/9.0.0      (t)    16) openmpi/4.0.3    (m)
 ```
 4. Activate your environment: `source activate <env_name>`
-
+5. Install dependancy: `pip install xarray optuna wandb comet_ml lightning openpyxl loguru tqdm argparse hiplot plotly matplotlib umap-learn networkx`
 
 Next, if you want to run the jupyter notebook you can do so by requesting an interactive allocation. Here running using `kedro jupyter lab` to allow contextualization of the project and configuration - 
 ~~`salloc --time=02:28:80 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=8G --account=def-mtarailo kedro jupyter lab --ip $(hostname -f) --no-browser`~~
 `salloc --time=1:0:0 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=4G --account=def-mtarailo srun $VIRTUAL_ENV/bin/jupyterlab.sh`
+> To get allocation with GPU: `salloc --time=02:59:00 --nodes=1 --ntasks=1 --mem=32G --gres=gpu:v100:1 --constraint=cascade,v100 --account=def-mtarailo srun $VIRTUAL_ENV/bin/jupyterlab.sh`
+
 
 ## Before you start
 Create a virtual environment with python 3.8.10 version.
