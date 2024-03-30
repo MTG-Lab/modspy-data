@@ -93,9 +93,9 @@ class MetaPath2VecLightningModule(pl.LightningModule):
         return optimizer
 
     def training_step(self, batch, batch_idx):
-        print(batch[0].device)
+        # print(batch[0].device)
         pos_rw, neg_rw = batch
-        print(f"Device pos_rw: {pos_rw.device}, neg_rw: {neg_rw.device}")
+        # print(f"Device pos_rw: {pos_rw.device}, neg_rw: {neg_rw.device}")
         # pos_rw = pos_rw.to(self.device)  # Ensure tensors are on the correct device
         # neg_rw = neg_rw.to(self.device)
         loss = self.model.loss(pos_rw, neg_rw)
@@ -293,9 +293,11 @@ def train_m2vec(config, data_filepath=None, num_epochs=10, num_gpus=0):
         log_every_n_steps=100,
         callbacks=[
             TuneReportCheckpointCallback(
-                metrics=["train_loss"], filename="trainer.ckpt", on="train_end"
+                metrics=["train_loss"], save_checkpoints=True, on="train_end"
             )
         ]
+        # checkpoiniting failing because of graham pyarrow does is having issue:
+        # ImportError: The pyarrow installation is not built with support for 'S3FileSystem'
         # accelerator="gpu", 
         # devices=1,
         # plugins=[RayLightningEnvironment()],
@@ -324,14 +326,14 @@ def tune_model(data_filepath):
     
     # Defining hyperparam search space
     search_space = {
-        "embedding_dim": tune.choice([64, 128, 256, 512]),
-        "walk_length": tune.randint(5, 100),
+        "embedding_dim": tune.choice([64, 128, 256]),
+        "walk_length": tune.randint(5, 25),
         "batch_size": tune.choice([32, 64, 128, 256, 512]),
         "lr": tune.loguniform(1e-4, 1e-1),
     }
 
     # The maximum training epochs
-    num_epochs = 500
+    num_epochs = 50
     # Number of sampls from parameter space
     num_samples = 100
     scheduler = ASHAScheduler(
@@ -355,7 +357,7 @@ def tune_model(data_filepath):
                                                 
     analysis = tune.run(trainable,
         config=search_space,
-        num_samples=2,
+        num_samples=5,
         scheduler=scheduler,
         local_dir="/home/rahit/projects/def-mtarailo/rahit/from_scratch/modspy-data/data/06_models/monarch-experiments/lightning-ray",  # Directory where results are stored
         progress_reporter=tune.CLIReporter(
@@ -369,7 +371,7 @@ def tune_model(data_filepath):
         # resources_per_trial={"cpu": 4, "gpu": 1},
     )
 
-    best_trial = analysis.get_best_trial()
+    best_trial = analysis.get_best_trial(metric='train_loss')
     print(f"Best trial config: {best_trial.config}")
     print(f"Best trial final validation loss: {best_trial.last_result['train_loss']}")
 

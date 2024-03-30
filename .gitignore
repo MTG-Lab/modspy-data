@@ -196,3 +196,13 @@ data copy/data/06_models/.gitkeep
 data copy/data/07_model_output/.gitkeep
 data copy/data/08_reporting/.gitkeep
 .bk-git-bk
+.cometml-runs
+wandb/latest-run
+wandb/offline-run-20240229_233710-u2up7vmi/run-u2up7vmi.wandb
+wandb/offline-run-20240229_233710-u2up7vmi/files/wandb-metadata.json
+wandb/offline-run-20240322_011628-nnyma9ea/run-nnyma9ea.wandb
+wandb/offline-run-20240322_011628-nnyma9ea/files/wandb-metadata.json
+wandb/offline-run-20240329_062420-a5rrg55t/run-a5rrg55t.wandb
+wandb/offline-run-20240329_062420-a5rrg55t/files/wandb-metadata.json
+wandb/run-20240226_170649-gcvqx2qc/run-gcvqx2qc.wandb
+wandb/run-20240226_170649-gcvqx2qc/files/config.yaml
