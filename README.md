@@ -28,6 +28,7 @@ Currently Loaded Modules:
 ```
 4. Activate your environment: `source activate <env_name>`
 5. Install dependancy: `pip install xarray optuna wandb comet_ml lightning openpyxl loguru tqdm argparse hiplot plotly matplotlib umap-learn networkx ray[train,tune,data]`
+6. For FAISS, I build from source.
 
 Next, if you want to run the jupyter notebook you can do so by requesting an interactive allocation. Here running using `kedro jupyter lab` to allow contextualization of the project and configuration - 
 ~~`salloc --time=02:28:80 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=8G --account=def-mtarailo kedro jupyter lab --ip $(hostname -f) --no-browser`~~
