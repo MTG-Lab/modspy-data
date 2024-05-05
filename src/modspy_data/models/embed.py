@@ -13,6 +13,7 @@ import torchmetrics
 from torch_geometric.transforms import AddSelfLoops
 import optuna
 from pytorch_lightning.loggers import CometLogger
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # import wandb
 import pytorch_lightning as pl
@@ -27,34 +28,41 @@ from torch.nn import BCEWithLogitsLoss
 from sklearn.metrics import accuracy_score
 
 
-
 ##########################
 # POSSIBLE METAPATH SCHEME
 ##########################
 METAPATH_SCHEME = [
-        ("biolink:Gene", "biolink:orthologous_to", "biolink:Gene"),
-        ("biolink:Gene", "biolink:interacts_with", "biolink:Gene"),
-#     ]
-#     [
-        ("biolink:Gene", "biolink:interacts_with", "biolink:Gene"),
-        ("biolink:Gene", "biolink:orthologous_to", "biolink:Gene"),
-        ("biolink:Gene", "biolink:interacts_with", "biolink:Gene"),
+    ("biolink:Gene", "biolink:orthologous_to", "biolink:Gene"),
+    ("biolink:Gene", "biolink:interacts_with", "biolink:Gene"),
+    #     ]
+    #     [
+    ("biolink:Gene", "biolink:interacts_with", "biolink:Gene"),
+    ("biolink:Gene", "biolink:orthologous_to", "biolink:Gene"),
+    ("biolink:Gene", "biolink:interacts_with", "biolink:Gene"),
     # ],
     # [
-        ("biolink:Gene", "biolink:participates_in", "biolink:Pathway"),
-        ("biolink:Pathway", "biolink:participates_in", "biolink:Gene"),
+    ("biolink:Gene", "biolink:participates_in", "biolink:Pathway"),
+    ("biolink:Pathway", "biolink:participates_in", "biolink:Gene"),
     # ],
     # [
-        ("biolink:Gene", "biolink:has_phenotype", "biolink:PhenotypicFeature"),
-        ("biolink:PhenotypicFeature", "biolink:subclass_of", "biolink:PhenotypicFeature"),
-        ("biolink:PhenotypicFeature", "biolink:has_phenotype", "biolink:Disease"),
-        ("biolink:Disease", "biolink:has_phenotype", "biolink:PhenotypicFeature"),
-        ("biolink:PhenotypicFeature", "biolink:has_phenotype", "biolink:Gene"),
+    ("biolink:Gene", "biolink:has_phenotype", "biolink:PhenotypicFeature"),
+    ("biolink:PhenotypicFeature", "biolink:subclass_of", "biolink:PhenotypicFeature"),
+    ("biolink:PhenotypicFeature", "biolink:has_phenotype", "biolink:Disease"),
+    ("biolink:Disease", "biolink:has_phenotype", "biolink:PhenotypicFeature"),
+    ("biolink:PhenotypicFeature", "biolink:has_phenotype", "biolink:Gene"),
     # ],
     # [
-        ("biolink:Gene", "biolink:enables", "biolink:BiologicalProcessOrActivity"),
-        ("biolink:BiologicalProcessOrActivity", "biolink:subclass_of", "biolink:BiologicalProcessOrActivity"),
-        ("biolink:BiologicalProcessOrActivity", "biolink:actively_involved_in", "biolink:Gene"),
+    ("biolink:Gene", "biolink:enables", "biolink:BiologicalProcessOrActivity"),
+    (
+        "biolink:BiologicalProcessOrActivity",
+        "biolink:subclass_of",
+        "biolink:BiologicalProcessOrActivity",
+    ),
+    (
+        "biolink:BiologicalProcessOrActivity",
+        "biolink:actively_involved_in",
+        "biolink:Gene",
+    ),
     # ],
 ]
 
@@ -76,7 +84,6 @@ class ModifierDataset(Dataset):
         return modifier, target, label
 
 
-
 class MetaPath2VecLightningModule(pl.LightningModule):
     def __init__(
         self,
@@ -90,6 +97,7 @@ class MetaPath2VecLightningModule(pl.LightningModule):
         lr=0.01,
         batch_size=128,
         metapath=None,
+        num_workers=8,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -120,12 +128,24 @@ class MetaPath2VecLightningModule(pl.LightningModule):
         )
 
         self.edge_types_to_reverse = [
-            ("biolink:Gene", "biolink:acts_upstream_of_or_within", "biolink:BiologicalProcessOrActivity"),
-            ("biolink:Gene", "biolink:actively_involved_in", "biolink:BiologicalProcessOrActivity"),
+            (
+                "biolink:Gene",
+                "biolink:acts_upstream_of_or_within",
+                "biolink:BiologicalProcessOrActivity",
+            ),
+            (
+                "biolink:Gene",
+                "biolink:actively_involved_in",
+                "biolink:BiologicalProcessOrActivity",
+            ),
             ("biolink:Gene", "biolink:participates_in", "biolink:Pathway"),
             ("biolink:Disease", "biolink:has_phenotype", "biolink:PhenotypicFeature"),
-            ('biolink:Gene', 'biolink:has_phenotype', 'biolink:PhenotypicFeature'),
-            ("biolink:Gene", "biolink:gene_associated_with_condition", "biolink:Disease"),
+            ("biolink:Gene", "biolink:has_phenotype", "biolink:PhenotypicFeature"),
+            (
+                "biolink:Gene",
+                "biolink:gene_associated_with_condition",
+                "biolink:Disease",
+            ),
             ("biolink:Gene", "biolink:expressed_in", "biolink:CellularComponent"),
         ]
         for _etype in self.edge_types_to_reverse:
@@ -163,7 +183,9 @@ class MetaPath2VecLightningModule(pl.LightningModule):
 
     def train_dataloader(self):
         loader = self.model.loader(
-            batch_size=self.hparams.batch_size, shuffle=True, num_workers=30
+            batch_size=self.hparams.batch_size,
+            shuffle=True,
+            num_workers=self.hparams.num_workers,
         )
         return loader
 
@@ -177,12 +199,27 @@ class MetaPath2VecLightningModule(pl.LightningModule):
     def val_dataloader(self):
         val_batch_size = len(self.dataset)
         # self.log('val_batch_size', batch_size=val_batch_size)
-        val_loader = DataLoader(self.dataset, batch_size=val_batch_size, shuffle=False, num_workers=30)
+        val_loader = DataLoader(
+            self.dataset,
+            batch_size=val_batch_size,
+            shuffle=False,
+            num_workers=self.hparams.num_workers,
+        )
         return val_loader
 
     def configure_optimizers(self):
+        # optimizer = torch.optim.SparseAdam(self.model.parameters(), lr=self.hparams.lr)
         optimizer = torch.optim.SparseAdam(self.model.parameters(), lr=self.hparams.lr)
-        return optimizer
+        lr_scheduler = {
+            "scheduler": ReduceLROnPlateau(
+                optimizer, mode="max", factor=0.7, patience=3, verbose=True
+            ),
+            "monitor": "val_accuracy",  # Monitor your validation accuracy for schedule
+            "interval": "epoch",
+            "frequency": 1,
+        }
+        return [optimizer], [lr_scheduler]
+        # return optimizer
 
     # def configure_optimizers(self):
     #     # Create an optimizer that will optimize both the MetaPath2Vec model
@@ -199,13 +236,11 @@ class MetaPath2VecLightningModule(pl.LightningModule):
     #         "train_loss", loss, on_step=True, on_epoch=True, prog_bar=False, logger=True
     #     )
     #     return loss
-    
+
     def training_step(self, batch, batch_idx):
         # print(batch[0].device)
         pos_rw, neg_rw = batch
         # print(f"Device pos_rw: {pos_rw.device}, neg_rw: {neg_rw.device}")
-        # pos_rw = pos_rw.to(self.device)  # Ensure tensors are on the correct device
-        # neg_rw = neg_rw.to(self.device)
         loss = self.model.loss(pos_rw, neg_rw)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=False, logger=True
@@ -377,4 +412,3 @@ class MetaPath2VecLightningModule(pl.LightningModule):
 
 
 # RotatE GNN based on PyG implementation wrapped by Pytorch Lightning
-
