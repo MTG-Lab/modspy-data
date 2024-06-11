@@ -3,8 +3,8 @@ dask:
   n_workers: 2
   slurm:
     cores: 2
-    memory: 212GB
+    memory: 8GB
     processes: 1
-    walltime: 01:15:00
+    walltime: "00-05:58:00"
     account: "def-mtarailo_cpu"
     log_directory: './logs'

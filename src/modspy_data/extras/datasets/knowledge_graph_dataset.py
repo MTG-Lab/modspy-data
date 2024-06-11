@@ -3,6 +3,7 @@
     
 from pathlib import PurePosixPath
 from typing import Any, Dict
+from loguru import logger
 
 import fsspec
 import networkx as nx
@@ -54,7 +55,9 @@ class KGDataSet(AbstractDataSet[pronto.Ontology, nx.DiGraph]):
                     parent_term = line.split(rel_type+": ")[1].split(' ! ')[0]
                     graph.add_edge(current_term, parent_term)
                 # TODO Additional relationships could be added here as needed
-        return graph
+        digraph_nxo = nxo.NXOntology(graph)
+        digraph_nxo.freeze()
+        return digraph_nxo
 
 
     def _load(self) -> nx.DiGraph:
@@ -74,10 +77,10 @@ class KGDataSet(AbstractDataSet[pronto.Ontology, nx.DiGraph]):
                 # anoter idea is to use edge attribute to indicate different relationships. 
                 dg = multidigraph_to_digraph(mg, reduce=True)
                 digraph_nxo = nxo.NXOntology(dg)
-                digraph_nxo.freeze()    
+                digraph_nxo.freeze()
                 return digraph_nxo
         except Exception as e:
-            # logging.info(repr(e))            
+            logger.warning(repr(e))
             return self.parse_obo_file_custom(load_path)
 
         

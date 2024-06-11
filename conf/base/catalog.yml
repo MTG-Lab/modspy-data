@@ -19,6 +19,12 @@ _tsv: &tsv
   save_args:
     index: False
 
+_csv: &csv
+  type: pandas.CSVDataSet
+  load_args:
+    sep: ","
+  save_args:
+    index: False
 
 #####################################################
 ################# Raw Datasets ######################
@@ -83,6 +89,22 @@ jvl:
 ########### DB, Ontologies, and other data sources ###############
 ##################################################################
 
+# Dataset names
+name_go:
+  type: MemoryDataSet
+  data: 'GO'
+name_hpo:
+  type: MemoryDataSet
+  data: 'HP'
+name_wpo:
+  type: MemoryDataSet
+  data: 'WPO'
+name_do:
+  type: MemoryDataSet
+  data: 'DO'
+name_stringdb:
+  type: MemoryDataSet
+  data: 'STRING'
 
 # NCBI (https://www.ncbi.nlm.nih.gov/) data
 ############################################
@@ -267,7 +289,7 @@ wb_goa:
   #   index: False
 
 
-# Human Phenotype Ontology (https://hpo.jax.org/app/download/ontology) data on 7 Dec 2023
+# Human Phenotype Ontology (https://hpo.jax.org/app/download/ontology) data on 9 Jun 2024
 # phenotype.hpoa file does not contains gene associations.
 # We will use their genes_to_phenotype.txt file instead.
 hpo:
@@ -352,7 +374,6 @@ string_alias:
     skiprows: 1
 
 
-
 #####################################################
 ################# Cleaned Datasets ##################
 #####################################################
@@ -376,7 +397,7 @@ olida_scored:
   filepath: data/02_intermediate/olida/dec_2023_scored.tsv
 
 olida_scored_pheno:
-  <<: *tsv
+  <<: *csv
   filepath: data/02_intermediate/olida/scored_pheno.tsv
   
 olida_scored_disease:
@@ -405,7 +426,7 @@ annotated:
   filepath: data/02_intermediate/v3/annotated.tsv
 
 zyg1_scored:
-  <<: *tsv
+  <<: *csv
   filepath: data/02_intermediate/mtg/scored.csv
 
 zyg1_features:
@@ -417,7 +438,7 @@ zyg1_annotated:
   filepath: data/02_intermediate/mtg/annotated.csv
 
 zyg1_scored_pheno:
-  <<: *tsv
+  <<: *csv
   filepath: data/02_intermediate/mtg/scored_pheno.tsv
   
 zyg1_scored_disease:
@@ -451,11 +472,11 @@ jvl_scored:
     index: False
     
 jvl_scored@pandas:
-  <<: *tsv
+  <<: *csv
   filepath: data/02_intermediate/jvl/scored.tsv
 
 jvl_scored_pheno:
-  <<: *tsv
+  <<: *csv
   filepath: data/02_intermediate/jvl/scored_pheno.tsv
   
 jvl_scored_disease:
@@ -488,9 +509,9 @@ jvl_features:
 # Combined Dataset
 modifiers:
   type: pandas.CSVDataSet
-  filepath: data/04_feature/modifier_merged_dataset.tsv
+  filepath: data/04_feature/2024-06-11-modifier_merged_dataset.tsv
   load_args:
-    sep: "\t"
+    sep: "\t"  # inconsitency in save/load args
   save_args:
     index: False
     sep: "\t"

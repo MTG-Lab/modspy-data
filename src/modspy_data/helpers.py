@@ -29,6 +29,12 @@ class KnowledgeGraphScores:
                     self.score_names.append(f"{o}_{l}_{p}")
         
         
+    ##
+    ## TODO Add https://github.com/MTG-Lab/GeMo/blob/5e146c2007e58cd61fafa74bf1ca4bf83ec380fa/src/gemo/features/build_features.py#L213 here to use fastsemsim.
+    ## For publication purpose only
+    ##
+        
+        
     def termgroup_sim(self, a, b, nxo, measures=None, mixing=['max','avg','bma']):
         """Get group similarity of a set of terms with another
         
@@ -59,8 +65,9 @@ class KnowledgeGraphScores:
             for j in sim_arr['candidate'].values:
                 try:
                     sim = nxo.similarity(i, j).results() # Get similarity from NXOntology routine
+                    # logger.debug(sim)
                 except Exception as e:
-                    # logger.warning(repr(e))
+                    logger.warning(repr(e))
                     continue
                 sim_arr.loc[i,j] = [v for k, v in sim.items() if k in self.nxo_info] # Filterning only score from dictionary
         sim_arr = xr.where(sim_arr>0, sim_arr, np.nan) # Mask 0 for NaNs
@@ -123,5 +130,6 @@ class KnowledgeGraphScores:
         _scores = self.termgroup_sim(_tg_annos, _g_annos, self.go_kg[0], measures=self.nxo_info, mixing=['max','avg','bma'])
         for k, s in _scores.items():
             result[f"{self.kg_name[0]}_{k}"] = s.item(0) if s else s
+        # logger.debug(result)
         
         return pd.Series(result, index=[self.col_names[0], self.col_names[1]]+self.score_names)

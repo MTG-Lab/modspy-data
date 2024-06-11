@@ -92,14 +92,13 @@ def add_annotations(df, kg):
 
 
 
-def compute_similarity(df, kg, col_names=('gene_a', 'gene_b', 'target_GOs', 'modifier_GOs'), dask_params=None):
+def compute_similarity(df, kg, kg_name='GO', col_names=('gene_a', 'gene_b', 'target_GOs', 'modifier_GOs'), dask_params=None):
     # logger = logging.getLogger(__name__)
     
     # Deriving the name programattically. 
     # # Not reliable. Change to parameterized if time allows
     # Get the third element of the tuple, split it on '_', and get the second part
-    kg_name = col_names[2].split('_')[1][:2]
-
+    # kg_name = col_names[2].split('_')[1][:2]
     kg_scores = KnowledgeGraphScores({kg_name: (kg, [])}, 
                                      col_names=col_names)
     cols = kg_scores.score_names
@@ -108,8 +107,8 @@ def compute_similarity(df, kg, col_names=('gene_a', 'gene_b', 'target_GOs', 'mod
         col_names[1]: 'object'
     }
     for c in cols:
-        cols_dtype[c] = 'float32'    
-    dask_npartition = 2
+        cols_dtype[c] = 'float32'
+    dask_npartition = 1
     
     # logger.info(dask_params)
     if dask_params != None and 'n_workers' in dask_params:
@@ -122,7 +121,8 @@ def compute_similarity(df, kg, col_names=('gene_a', 'gene_b', 'target_GOs', 'mod
         elif df.shape[0] > 100:
             dask_npartition = 4
     ddf = dd.from_pandas(df, npartitions=dask_npartition)
-    __df = ddf.apply(kg_scores.get_scores, axis=1, meta=cols_dtype) 
+    unique_ddf = ddf.drop_duplicates(subset=[col_names[0], col_names[1]])
+    __df = unique_ddf.apply(kg_scores.get_scores, axis=1, meta=cols_dtype)
     return __df.compute()
 
 # Define a function to apply to each row of the `edges` DataFrame
