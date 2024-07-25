@@ -36,6 +36,13 @@ Next, if you want to run the jupyter notebook you can do so by requesting an int
 > To get allocation with GPU: `salloc --time=02:59:00 --nodes=1 --ntasks=1 --mem=32G --gres=gpu:v100:1 --constraint=cascade,v100 --account=def-mtarailo srun $VIRTUAL_ENV/bin/jupyterlab.sh`
 
 
+#### Data preperation part currently relies on old modules and libraries. To run the data preperation part, you need to activate the following modules:
+1. `module load StdEnv/2020`
+2. `module load gcc/9.3.0 python/3.8.10 cuda/11.7 arrow/9.0.0`
+3. `source ~/jupyter_py3/bin/activate`
+4. `salloc --time=8:28:80 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=12G --account=def-mtarailo kedro jupyter lab --ip $(hostname -f) --no-browser`
+
+
 ## Before you start
 Create a virtual environment with python 3.8.10 version.
 

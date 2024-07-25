@@ -23,6 +23,7 @@ goatools
 # Data Science
 # numpy
 # pandas
+imbalanced-learn
 xarray
 # ray[air,data,train,tune,serve]
 pyspark
